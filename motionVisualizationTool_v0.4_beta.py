@@ -82,7 +82,6 @@ import numpy as np
 import os
 import glob
 import sys
-from pathlib import Path
 from matplotlib import pyplot as plt
 plt.switch_backend('agg') #doesn't show plots
 import csv
@@ -100,6 +99,11 @@ except:
     install('tidynamics')
     import tidynamics
 
+try:
+    from pathlib import Path
+except:
+    install('pathlib')
+    from pathlib import Path
 
 sns.set_context("talk", font_scale=1, rc={"lines.linewidth": 3})
 sns.set_style("ticks")
@@ -558,8 +562,8 @@ class GUI:
         The MSAD information from the tracking file is wrong.'''
         
         summaryParticle = True
-        
-        with open(f,'r') as csvfile:
+
+        with open(str(f),'r') as csvfile:
             fileReader = csv.reader(csvfile, delimiter=',')
             for row in fileReader:
                 if len(row) == 0:
@@ -875,7 +879,7 @@ class GUI:
         plt.close()
     
         #Save data
-        with open(directorySave/'MSD_linearFitting_average.csv', 'w') as textfile:
+        with open(str(directorySave/'MSD_linearFitting_average.csv'), 'w') as textfile:
             textfile.write("Fitting equation,MSD = 4D*t\n")
             textfile.write("D (um^2/s),%.6f\n" % (popt[0]/4))
 
@@ -922,14 +926,14 @@ class GUI:
 
         #Save data
         for p in range(self.nbParticles):
-            with open(directorySave/('MSD_linearFitting_P'+str(p)+'.csv'), 'w') as textfile:
+            with open(str(directorySave/('MSD_linearFitting_P'+str(p)+'.csv')), 'w') as textfile:
                 textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                 textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                 textfile.write("Fitting equation,MSD = 4D*t\n")
                 textfile.write("D (um^2/s),%.6f\n" % (self.validParticles[p].diffusionLinearFitting))
         
         #Save summary data
-        with open(directorySave/'MSD_linearFitting_Summary.csv', 'w') as textfile:
+        with open(str(directorySave/'MSD_linearFitting_Summary.csv'), 'w') as textfile:
             Dlist = list()
             textfile.write("Fitting equation,MSD = 4D*t\n")
             textfile.write('D (um^2/s),')
@@ -975,7 +979,7 @@ class GUI:
         plt.close()
     
         #Save data
-        with open(directorySave/'MSAD_linearFitting_average.csv', 'w') as textfile:
+        with open(str(directorySave/'MSAD_linearFitting_average.csv'), 'w') as textfile:
             textfile.write("Fitting equation,MSAD = 4Dr*t\n")
             textfile.write("Dr (rad^2/s),%.6f\n" % (popt[0]/4))
             textfile.write("tau (s),%.6f\n" % (4/popt[0]))
@@ -1025,7 +1029,7 @@ class GUI:
 
         #Save data
         for p in range(self.nbParticles):
-            with open(directorySave/('MSAD_linearFitting_P'+str(p)+'.csv'), 'w') as textfile:
+            with open(str(directorySave/('MSAD_linearFitting_P'+str(p)+'.csv')), 'w') as textfile:
                 textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                 textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                 textfile.write("Fitting equation,MSD = 4Dr*t\n")
@@ -1033,7 +1037,7 @@ class GUI:
                 textfile.write("tau (s),%.6f\n" % (self.validParticles[p].tauLinearFitting))
 
         #Save summary data
-        with open(directorySave/('MSAD_linearFitting_Summary.csv'), 'w') as textfile:
+        with open(str(directorySave/('MSAD_linearFitting_Summary.csv')), 'w') as textfile:
             Dlist = list()
             taulist = list()
             textfile.write("Fitting equation,MSAD = 4Dr*t\n")
@@ -1089,7 +1093,7 @@ class GUI:
         plt.close()
     
         #Save data
-        with open(directorySave/('MSD_quadraticFitting_average.csv'), 'w') as textfile:
+        with open(str(directorySave/('MSD_quadraticFitting_average.csv')), 'w') as textfile:
             textfile.write("Fitting equation,MSD = 4D*t + v^2*t^2\n")
             textfile.write("D (um^2/s),%.6f\n" % (popt[0]/4))
             textfile.write("v (um/s),%.6f\n" % (np.sqrt(popt[1])))
@@ -1140,7 +1144,7 @@ class GUI:
 
         #Save data
         for p in range(self.nbParticles):
-            with open(directorySave/('MSD_quadraticFitting_P'+str(p)+'.csv'), 'w') as textfile:
+            with open(str(directorySave/('MSD_quadraticFitting_P'+str(p)+'.csv')), 'w') as textfile:
                 textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                 textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                 textfile.write("Fitting equation,MSD = 4D*t + v^2*t^2\n")
@@ -1149,7 +1153,7 @@ class GUI:
                 textfile.write("v^2 (um^2/s^2),%.6f\n" % (self.validParticles[p].speedSquaredQuadraticFitting))
 
         #Save summary data
-        with open(directorySave/('MSD_quadraticFitting_Summary.csv'), 'w') as textfile:
+        with open(str(directorySave/('MSD_quadraticFitting_Summary.csv')), 'w') as textfile:
             Dlist = list()
             vlist = list()
             vsquarelist = list()
@@ -1215,7 +1219,7 @@ class GUI:
         plt.close()
     
         #Save data
-        with open(directorySave/('MSAD_quadraticFitting_average.csv'), 'w') as textfile:
+        with open(str(directorySave/('MSAD_quadraticFitting_average.csv')), 'w') as textfile:
             textfile.write("Fitting equation,MSAD = 4Dr*t + w^2*t^2\n")
             textfile.write("Dr (rad^2/s),%.6f\n" % (popt[0]/4))
             textfile.write("w^2 (rad^2/s^2),%.6f\n" % (popt[1]))            
@@ -1269,7 +1273,7 @@ class GUI:
 
         #Save data
         for p in range(self.nbParticles):
-            with open(directorySave/('MSAD_quadraticFitting_P'+str(p)+'.csv'), 'w') as textfile:
+            with open(str(directorySave/('MSAD_quadraticFitting_P'+str(p)+'.csv')), 'w') as textfile:
                 textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                 textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                 textfile.write("Fitting equation,MSAD = 4Dr*t + w^2*t^2\n")
@@ -1278,7 +1282,7 @@ class GUI:
                 textfile.write("tau (s),%.6f\n" % (self.validParticles[p].tauQuadraticFitting))
 
         #Save summary data
-        with open(directorySave/'MSAD_quadraticFitting_Summary.csv', 'w') as textfile:
+        with open(str(directorySave/'MSAD_quadraticFitting_Summary.csv'), 'w') as textfile:
             Dlist = list()
             wlist = list()
             wsquarelist = list()
@@ -1357,7 +1361,7 @@ class GUI:
         plt.close()
 
         #Save data
-        with open(directorySave/'MSD_logFitting_average.csv', 'w') as textfile:
+        with open(str(directorySave/'MSD_logFitting_average.csv'), 'w') as textfile:
             textfile.write("Fitting equation,MSD = D*t^alpha\n")
             textfile.write("D (um^2/s^alpha),%.6f\n" % (popt[1]))
             textfile.write("Alpha,%.6f\n" % (np.exp(popt[0])))        
@@ -1408,7 +1412,7 @@ class GUI:
 
         #Save data
         for p in range(self.nbParticles):
-            with open(directorySave/('MSD_logFitting_P'+str(p)+'.csv'), 'w') as textfile:
+            with open(str(directorySave/('MSD_logFitting_P'+str(p)+'.csv')), 'w') as textfile:
                 textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                 textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                 textfile.write("Fitting equation,MSD = D*t^alpha\n")
@@ -1416,7 +1420,7 @@ class GUI:
                 textfile.write("Alpha,%.6f\n" % (self.validParticles[p].alphaFitting))
 
         #Save summary data
-        with open(directorySave/'MSD_logFitting_Summary.csv', 'w') as textfile:
+        with open(str(directorySave/'MSD_logFitting_Summary.csv'), 'w') as textfile:
             Dlist = list()
             alphalist = list()
             textfile.write("Fitting equation,MSD = D*t^alpha\n")
@@ -1484,7 +1488,7 @@ class GUI:
         fig0.savefig(directorySave/'alpha_average_short.svg',format='svg',dpi=1200)
         plt.close()  
         
-        with open(directorySave/'alpha_average.csv', 'w') as textfile:
+        with open(str(directorySave/'alpha_average.csv'), 'w') as textfile:
             textfile.write('TimeD (s),')
             for t in self.averageTimeD:
                 textfile.write("%.2f," % (t))
@@ -1592,7 +1596,7 @@ class GUI:
             alpha = self.validParticles[p].alpha
             timeD = self.validParticles[p].timeD[:-1] #By default, alpha has one less value
             if len(alpha) > 0:
-                with open(directorySave/('alpha_P'+str(p)+'.csv'), 'w') as textfile:
+                with open(str(directorySave/('alpha_P'+str(p)+'.csv')), 'w') as textfile:
                     textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                     textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                     textfile.write('TimeD (s),')
@@ -1670,7 +1674,7 @@ class GUI:
             if len(v) > 0:
                 averageV = np.mean(v)
                 stdV = np.std(v)
-                with open(directorySave/('instVel_P'+str(p)+'.csv'), 'w') as textfile:
+                with open(str(directorySave/('instVel_P'+str(p)+'.csv')), 'w') as textfile:
                     textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                     textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                     textfile.write('Average velocity,%.6f\n' % (averageV))
@@ -1717,7 +1721,7 @@ class GUI:
         fig0.savefig(directorySave/'AutoCor_average_short.svg',format='svg',dpi=1200)
         plt.close()  
         
-        with open(directorySave/'AutoCor_average.csv', 'w') as textfile:
+        with open(str(directorySave/'AutoCor_average.csv'), 'w') as textfile:
             textfile.write('TimeD (s),')
             for t in self.averageTimeDAutoCor:
                 textfile.write("%.2f," % (t))
@@ -1826,7 +1830,7 @@ class GUI:
             autoCor = self.validParticles[p].autoCor
             timeD = self.validParticles[p].timeD
             if len(autoCor) > 0:
-                with open(directorySave/('autocor_P'+str(p)+'.csv'), 'w') as textfile:
+                with open(str(directorySave/('autocor_P'+str(p)+'.csv')), 'w') as textfile:
                     textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                     textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                     textfile.write('TimeD (s),')
@@ -1872,7 +1876,7 @@ class GUI:
         fig0.savefig(directorySave/'MSAD_average_short.svg',format='svg',dpi=1200)
         plt.close()  
         
-        with open(directorySave/'MSAD_average.csv', 'w') as textfile:
+        with open(str(directorySave/'MSAD_average.csv'), 'w') as textfile:
             textfile.write('TimeD (s),')
             for t in self.averageTimeDMSAD:
                 textfile.write("%.2f," % (t))
@@ -2019,7 +2023,7 @@ class GUI:
             MSAD = self.validParticles[p].MSAD
             timeD = self.validParticles[p].timeD
             if len(MSAD) > 0:
-                with open(directorySave/('MSAD_P'+str(p)+'.csv'), 'w') as textfile:
+                with open(str(directorySave/('MSAD_P'+str(p)+'.csv')), 'w') as textfile:
                     textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                     textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                     textfile.write('TimeD (s),')
@@ -2098,7 +2102,7 @@ class GUI:
             plt.close()
             
         for p in range(self.nbParticles):
-            with open(directorySave/('trajectory_P'+str(p)+'.csv'), 'w') as textfile:
+            with open(str(directorySave/('trajectory_P'+str(p)+'.csv')), 'w') as textfile:
                 textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                 textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                 textfile.write('TimeD (s),')
@@ -2151,7 +2155,7 @@ class GUI:
         fig0.savefig(directorySave/'MSD_average_short.svg',format='svg',dpi=1200)
         plt.close()  
         
-        with open(directorySave/'MSD_average.csv', 'w') as textfile:
+        with open(str(directorySave/'MSD_average.csv'), 'w') as textfile:
             textfile.write('TimeD (s),')
             for t in self.averageTimeD:
                 textfile.write("%.2f," % (t))
@@ -2261,7 +2265,7 @@ class GUI:
             plt.close()
         
         for p in range(self.nbParticles):
-            with open(directorySave/('MSD_P'+str(p)+'.csv'), 'w') as textfile:
+            with open(str(directorySave/('MSD_P'+str(p)+'.csv')), 'w') as textfile:
                 textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                 textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                 textfile.write('TimeD (s),')
