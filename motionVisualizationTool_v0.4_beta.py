@@ -630,8 +630,8 @@ class GUI:
 
     def doDataAnalysis(self):
         
-        if not os.path.exists(self.dn / Path('Plots')):
-            os.mkdir(self.dn/ Path('Plots'))
+        if not os.path.exists(str(self.dn / Path('Plots'))):
+            os.mkdir(str(self.dn/ Path('Plots')))
                 
         #If something related to angles is selected
         #The angles are calculated, not taken from the tracking file
@@ -852,8 +852,8 @@ class GUI:
         #so that the averageMSD variable exists
         
         #Creates the folder if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSD')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSD'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
         
         directorySave = self.dn / Path('Plots/FittingsMSD')          
 
@@ -874,8 +874,8 @@ class GUI:
         plt.legend()
         plt.title('MSD linear fitting for all particles')
         
-        fig0.savefig(directorySave/'MSD_linearFitting_average.png')
-        fig0.savefig(directorySave/'MSD_linearFitting_average.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSD_linearFitting_average.svg'))
+        fig0.savefig(str(directorySave/'MSD_linearFitting_average.svg'),format='svg',dpi=1200)
         plt.close()
     
         #Save data
@@ -887,12 +887,12 @@ class GUI:
     def doLinearFitting(self):
         
         #Creates the folder fittings if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSD')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSD'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
             
         #Creates the folder for alpha fitting if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSD/Linear')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSD/Linear'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD/Linear'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD/Linear')))
         
         directorySave = self.dn / Path('Plots/FittingsMSD/Linear') 
         
@@ -920,8 +920,8 @@ class GUI:
             plt.legend()
             plt.title('MSD linear fitting for particle ' + str(part))
             
-            fig0.savefig(directorySave/('MSD_linearFitting_P'+str(part)+'.png'))
-            fig0.savefig(directorySave/('MSD_linearFitting_P'+str(part)+'.svg'),format='svg',dpi=1200)
+            fig0.savefig(str(directorySave/('MSD_linearFitting_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSD_linearFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
         #Save data
@@ -952,8 +952,8 @@ class GUI:
         #so that the averageMSAD variable exists
         
         #Creates the folder if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSAD')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSAD'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSAD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSAD')))
         
         directorySave = self.dn / Path('Plots/FittingsMSAD')        
 
@@ -974,8 +974,8 @@ class GUI:
         plt.legend()
         plt.title('MSAD linear fitting for all particles')
         
-        fig0.savefig(directorySave/'MSAD_linearFitting_average.png')
-        fig0.savefig(directorySave/'MSAD_linearFitting_average.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSAD_linearFitting_average.svg'))
+        fig0.savefig(str(directorySave/'MSAD_linearFitting_average.svg'),format='svg',dpi=1200)
         plt.close()
     
         #Save data
@@ -989,12 +989,12 @@ class GUI:
     def doLinearFittingMSAD(self):
         
         #Creates the folder fittings if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSAD')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSAD'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSAD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSAD')))
             
         #Creates the folder for alpha fitting if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSAD/Linear')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSAD/Linear'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSAD/Linear'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSAD/Linear')))
         
         directorySave = self.dn / Path('Plots/FittingsMSAD/Linear')
         
@@ -1023,8 +1023,8 @@ class GUI:
             plt.legend()
             plt.title('MSAD linear fitting for particle ' + str(part))
             
-            fig0.savefig(directorySave/('MSAD_linearFitting_P'+str(part)+'.png'))
-            fig0.savefig(directorySave/('MSAD_linearFitting_P'+str(part)+'.svg'),format='svg',dpi=1200)
+            fig0.savefig(str(directorySave/('MSAD_linearFitting_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSAD_linearFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
         #Save data
@@ -1066,8 +1066,8 @@ class GUI:
         #so that the averageMSD variable exists
         
         #Creates the folder if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSD')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSD'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
         
         directorySave = self.dn / Path('Plots/FittingsMSD')         
 
@@ -1088,8 +1088,8 @@ class GUI:
         plt.legend()
         plt.title('MSD quadratic fitting for all particles')
         
-        fig0.savefig(directorySave/('MSD_quadraticFitting_average.png'))
-        fig0.savefig(directorySave/('MSD_quadraticFitting_average.svg'),format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/('MSD_quadraticFitting_average.svg')))
+        fig0.savefig(str(directorySave/('MSD_quadraticFitting_average.svg')),format='svg',dpi=1200)
         plt.close()
     
         #Save data
@@ -1103,12 +1103,12 @@ class GUI:
     def doQuadraticFitting(self):
         
         #Creates the folder fittings if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSD')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSD'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
             
         #Creates the folder for alpha fitting if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSD/Quadratic')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSD/Quadratic'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD/Quadratic'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD/Quadratic')))
         
         directorySave = self.dn / Path('Plots/FittingsMSD/Quadratic')
         
@@ -1138,8 +1138,8 @@ class GUI:
             plt.legend()
             plt.title('MSD quadratic fitting for particle ' + str(part))
             
-            fig0.savefig(directorySave/('MSD_quadraticFitting_P'+str(part)+'.png'))
-            fig0.savefig(directorySave/('MSD_quadraticFitting_P'+str(part)+'.svg'),format='svg',dpi=1200)
+            fig0.savefig(str(directorySave/('MSD_quadraticFitting_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSD_quadraticFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
         #Save data
@@ -1192,8 +1192,8 @@ class GUI:
         #so that the averageMASD variable exists
         
         #Creates the folder if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSAD')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSAD'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSAD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSAD')))
         
         directorySave = self.dn / Path('Plots/FittingsMSAD')         
 
@@ -1214,8 +1214,8 @@ class GUI:
         plt.legend()
         plt.title('MSAD quadratic fitting for all particles')
         
-        fig0.savefig(directorySave/('MSAD_quadraticFitting_average.png'))
-        fig0.savefig(directorySave/('MSAD_quadraticFitting_average.svg'),format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/('MSAD_quadraticFitting_average.svg')))
+        fig0.savefig(str(directorySave/('MSAD_quadraticFitting_average.svg')),format='svg',dpi=1200)
         plt.close()
     
         #Save data
@@ -1231,12 +1231,12 @@ class GUI:
         '''Does quadratic fitting to the MSAD function'''
         
         #Creates the folder fittings if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSAD')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSAD'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSAD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSAD')))
             
         #Creates the folder for alpha fitting if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSAD/Quadratic')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSAD/Quadratic'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSAD/Quadratic'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSAD/Quadratic')))
         
         directorySave = self.dn / Path('Plots/FittingsMSAD/Quadratic')
         
@@ -1267,8 +1267,8 @@ class GUI:
             plt.legend()
             plt.title('MSAD quadratic fitting for particle ' + str(part))
             
-            fig0.savefig(directorySave/('MSAD_quadraticFitting_P'+str(part)+'.png'))
-            fig0.savefig(directorySave/('MSAD_quadraticFitting_P'+str(part)+'.svg'),format='svg',dpi=1200)
+            fig0.savefig(str(directorySave/('MSAD_quadraticFitting_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSAD_quadraticFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
         #Save data
@@ -1332,8 +1332,8 @@ class GUI:
         #so that the averageMSD variable exists
         
         #Creates the folder if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSD')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSD'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
         
         directorySave = self.dn / Path('Plots/FittingsMSD')         
 
@@ -1356,8 +1356,8 @@ class GUI:
         plt.legend()
         plt.title('MSD exponent for all particles')
         
-        fig0.savefig(directorySave/'MSD_logFitting_average.png')
-        fig0.savefig(directorySave/'MSD_logFitting_average.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSD_logFitting_average.svg'))
+        fig0.savefig(str(directorySave/'MSD_logFitting_average.svg'),format='svg',dpi=1200)
         plt.close()
 
         #Save data
@@ -1370,12 +1370,12 @@ class GUI:
         
         
         #Creates the folder fittings if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSD')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSD'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
             
         #Creates the folder for alpha fitting if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/FittingsMSD/Logarithmic')):
-            os.mkdir(self.dn / Path('Plots/FittingsMSD/Logarithmic'))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD/Logarithmic'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD/Logarithmic')))
         
         directorySave = self.dn / Path('Plots/FittingsMSD/Logarithmic')
         
@@ -1406,8 +1406,8 @@ class GUI:
             plt.legend()
             plt.title('MSD exponent for particle ' + str(part))
             
-            fig0.savefig(directorySave/('MSD_logFitting_P'+str(part)+'.png'))
-            fig0.savefig(directorySave/('MSD_logFitting_P'+str(part)+'.svg'),format='svg',dpi=1200)
+            fig0.savefig(str(directorySave/('MSD_logFitting_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSD_logFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
         #Save data
@@ -1450,8 +1450,8 @@ class GUI:
         #so that the averageMSD variable exists
         
         #Creates the folder alpha if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/Exponent')):
-            os.mkdir(self.dn / Path('Plots/Exponent'))
+        if not os.path.exists(str(self.dn / Path('Plots/Exponent'))):
+            os.mkdir(str(self.dn / Path('Plots/Exponent')))
         
         directorySave = self.dn / Path('Plots/Exponent')
                 
@@ -1471,8 +1471,8 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSD exponent (long)')
         
-        fig0.savefig(directorySave/'alpha_average_long.png')
-        fig0.savefig(directorySave/'alpha_average_long.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'alpha_average_long.svg'))
+        fig0.savefig(str(directorySave/'alpha_average_long.svg'),format='svg',dpi=1200)
         plt.close()
         
         #Plot average alpha, short version
@@ -1484,8 +1484,8 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSD exponent (short)')
         
-        fig0.savefig(directorySave/'alpha_average_short.png')
-        fig0.savefig(directorySave/'alpha_average_short.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'alpha_average_short.svg'))
+        fig0.savefig(str(directorySave/'alpha_average_short.svg'),format='svg',dpi=1200)
         plt.close()  
         
         with open(str(directorySave/'alpha_average.csv'), 'w') as textfile:
@@ -1501,8 +1501,8 @@ class GUI:
                 
     def doLocalAlpha(self):
         
-        if not os.path.exists(self.dn / Path('Plots/Exponent')):
-            os.mkdir(self.dn / Path('Plots/Exponent'))
+        if not os.path.exists(str(self.dn / Path('Plots/Exponent'))):
+            os.mkdir(str(self.dn / Path('Plots/Exponent')))
         
         directorySave = self.dn / Path('Plots/Exponent')
 
@@ -1523,8 +1523,8 @@ class GUI:
         plt.axis('tight')
         plt.title('MSD exponent for all particles (long)')
         
-        fig0.savefig(directorySave/'alpha_long_all.png')
-        fig0.savefig(directorySave/'alpha_long_all.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'alpha_long_all.svg'))
+        fig0.savefig(str(directorySave/'alpha_long_all.svg'),format='svg',dpi=1200)
         plt.close()
 
 
@@ -1542,13 +1542,13 @@ class GUI:
         plt.axis('tight')
         plt.title('MSD exponent for all particles (short)')
         
-        fig0.savefig(directorySave/'alpha_short_all.png')
-        fig0.savefig(directorySave/'alpha_short_all.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'alpha_short_all.svg'))
+        fig0.savefig(str(directorySave/'alpha_short_all.svg'),format='svg',dpi=1200)
         plt.close()
         
         #Creates the folder for individual particles if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/Exponent/Individual')):
-            os.mkdir(self.dn / Path('Plots/Exponent/Individual'))
+        if not os.path.exists(str(self.dn / Path('Plots/Exponent/Individual'))):
+            os.mkdir(str(self.dn / Path('Plots/Exponent/Individual')))
         
         directorySave = self.dn / Path('Plots/Exponent/Individual')
         
@@ -1567,8 +1567,8 @@ class GUI:
             plt.axis('tight')
             plt.title('MSD exponent for particle ' + str(part))
             
-            fig0.savefig(directorySave/('alpha_short_P'+str(part)+'.png'))
-            fig0.savefig(directorySave/('alpha_short_P'+str(part)+'.svg'),format='svg',dpi=1200)
+            fig0.savefig(str(directorySave/('alpha_short_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('alpha_short_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
                 
 
@@ -1587,8 +1587,8 @@ class GUI:
             plt.axis('tight')
             plt.title('MSD exponent for particle ' + str(part))
             
-            fig0.savefig(directorySave/('alpha_long_P'+str(part)+'.png'))
-            fig0.savefig(directorySave/('alpha_long_P'+str(part)+'.svg'),format='svg',dpi=1200)
+            fig0.savefig(str(directorySave/('alpha_long_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('alpha_long_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
         
         #Save data
@@ -1611,8 +1611,8 @@ class GUI:
 
     def doInstVel(self):
         
-        if not os.path.exists(self.dn / Path('Plots/InstantaneousVelocity')):
-            os.mkdir(self.dn / Path('Plots/InstantaneousVelocity'))
+        if not os.path.exists(str(self.dn / Path('Plots/InstantaneousVelocity'))):
+            os.mkdir(str(self.dn / Path('Plots/InstantaneousVelocity')))
         
         directorySave = self.dn / Path('Plots/InstantaneousVelocity')
         
@@ -1631,13 +1631,13 @@ class GUI:
         plt.axis('tight')
         plt.title('Instantaneous velocity for all particles')
         
-        fig0.savefig(directorySave/'instVel_all.png')
-        fig0.savefig(directorySave/'instVel_all.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'instVel_all.svg'))
+        fig0.savefig(str(directorySave/'instVel_all.svg'),format='svg',dpi=1200)
         plt.close()
 
         #Creates the folder for individual particles if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/InstantaneousVelocity/Individual')):
-            os.mkdir(self.dn / Path('Plots/InstantaneousVelocity/Individual'))
+        if not os.path.exists(str(self.dn / Path('Plots/InstantaneousVelocity/Individual'))):
+            os.mkdir(str(self.dn / Path('Plots/InstantaneousVelocity/Individual')))
         
         directorySave = self.dn / Path('Plots/InstantaneousVelocity/Individual')
         
@@ -1663,8 +1663,8 @@ class GUI:
                 plt.title('Instantaneous velocity for particle ' + str(part))
                 plt.legend()
                 
-                fig0.savefig(directorySave/('instVel_P'+str(part)+'.png'))
-                fig0.savefig(directorySave/('instVel_P'+str(part)+'.svg'),format='svg',dpi=1200)
+                fig0.savefig(str(directorySave/('instVel_P'+str(part)+'.svg')))
+                fig0.savefig(str(directorySave/('instVel_P'+str(part)+'.svg')),format='svg',dpi=1200)
                 plt.close()
         
         #Save data
@@ -1690,8 +1690,8 @@ class GUI:
     def doAverageAutoCor(self):
         
         #Creates the folder MSD if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/Autocorrelation')):
-            os.mkdir(self.dn / Path('Plots/Autocorrelation'))
+        if not os.path.exists(str(self.dn / Path('Plots/Autocorrelation'))):
+            os.mkdir(str(self.dn / Path('Plots/Autocorrelation')))
         
         directorySave = self.dn / Path('Plots/Autocorrelation') 
                 
@@ -1704,8 +1704,8 @@ class GUI:
         plt.axis('tight')
         plt.title('Average autocorrelation function (long)')
         
-        fig0.savefig(directorySave/'AutoCor_average_long.png')
-        fig0.savefig(directorySave/'AutoCor_average_long.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'AutoCor_average_long.svg'))
+        fig0.savefig(str(directorySave/'AutoCor_average_long.svg'),format='svg',dpi=1200)
         plt.close()
         
         #Plot average MSD, short version
@@ -1717,8 +1717,8 @@ class GUI:
         plt.axis('tight')
         plt.title('Average autocorrelation function (short)')
         
-        fig0.savefig(directorySave/'AutoCor_average_short.png')
-        fig0.savefig(directorySave/'AutoCor_average_short.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'AutoCor_average_short.svg'))
+        fig0.savefig(str(directorySave/'AutoCor_average_short.svg'),format='svg',dpi=1200)
         plt.close()  
         
         with open(str(directorySave/'AutoCor_average.csv'), 'w') as textfile:
@@ -1733,8 +1733,8 @@ class GUI:
 
     def doAutoCor(self):
                 
-        if not os.path.exists(self.dn / Path('Plots/Autocorrelation')):
-            os.mkdir(self.dn / Path('Plots/Autocorrelation'))
+        if not os.path.exists(str(self.dn / Path('Plots/Autocorrelation'))):
+            os.mkdir(str(self.dn / Path('Plots/Autocorrelation')))
         
         directorySave = self.dn / Path('Plots/Autocorrelation')
         
@@ -1753,8 +1753,8 @@ class GUI:
         plt.axis('tight')
         plt.title('Autocorrelation function for all particles (long)')
         
-        fig0.savefig(directorySave/'autocor_long_all.png')
-        fig0.savefig(directorySave/'autocor_long_all.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'autocor_long_all.svg'))
+        fig0.savefig(str(directorySave/'autocor_long_all.svg'),format='svg',dpi=1200)
         plt.close()
 
 
@@ -1773,14 +1773,14 @@ class GUI:
         plt.axis('tight')
         plt.title('Autocorrelation function for all particles (short)')
         
-        fig0.savefig(directorySave/'autocor_short_all.png')
-        fig0.savefig(directorySave/'autocor_short_all.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'autocor_short_all.svg'))
+        fig0.savefig(str(directorySave/'autocor_short_all.svg'),format='svg',dpi=1200)
         plt.close()
         
         
         #Creates the folder for individual particles if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/Autocorrelation/Individual')):
-            os.mkdir(self.dn / Path('Plots/Autocorrelation/Individual'))
+        if not os.path.exists(str(self.dn / Path('Plots/Autocorrelation/Individual'))):
+            os.mkdir(str(self.dn / Path('Plots/Autocorrelation/Individual')))
         
         directorySave = self.dn / Path('Plots/Autocorrelation/Individual')
         
@@ -1800,8 +1800,8 @@ class GUI:
                 plt.axis('tight')
                 plt.title('Autocorrelation for particle ' + str(part))
                 
-                fig0.savefig(directorySave/('autocor_short_P'+str(part)+'.png'))
-                fig0.savefig(directorySave/('autocor_short_P'+str(part)+'.svg'),format='svg',dpi=1200)
+                fig0.savefig(str(directorySave/('autocor_short_P'+str(part)+'.svg')))
+                fig0.savefig(str(directorySave/('autocor_short_P'+str(part)+'.svg')),format='svg',dpi=1200)
                 plt.close()
                 
 
@@ -1821,8 +1821,8 @@ class GUI:
                 plt.axis('tight')
                 plt.title('Autocorrelation for particle ' + str(part))
                 
-                fig0.savefig(directorySave/('autocor_long_P'+str(part)+'.png'))
-                fig0.savefig(directorySave/('autocor_long_P'+str(part)+'.svg'),format='svg',dpi=1200)
+                fig0.savefig(str(directorySave/('autocor_long_P'+str(part)+'.svg')))
+                fig0.savefig(str(directorySave/('autocor_long_P'+str(part)+'.svg')),format='svg',dpi=1200)
                 plt.close()
         
         #Save data
@@ -1845,8 +1845,8 @@ class GUI:
         '''Plots the average MSAD with error bars in long and short format'''
 
         #Creates the folder MSAD if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/MSAD')):
-            os.mkdir(self.dn / Path('Plots/MSAD'))
+        if not os.path.exists(str(self.dn / Path('Plots/MSAD'))):
+            os.mkdir(str(self.dn / Path('Plots/MSAD')))
         
         directorySave = self.dn / Path('Plots/MSAD')
                 
@@ -1859,8 +1859,8 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSAD (long)')
         
-        fig0.savefig(directorySave/'MSAD_average_long.png')
-        fig0.savefig(directorySave/'MSAD_average_long.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSAD_average_long.svg'))
+        fig0.savefig(str(directorySave/'MSAD_average_long.svg'),format='svg',dpi=1200)
         plt.close()
         
         #Plot average MSAD, short version
@@ -1872,8 +1872,8 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSAD (short)')
         
-        fig0.savefig(directorySave/'MSAD_average_short.png')
-        fig0.savefig(directorySave/'MSAD_average_short.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSAD_average_short.svg'))
+        fig0.savefig(str(directorySave/'MSAD_average_short.svg'),format='svg',dpi=1200)
         plt.close()  
         
         with open(str(directorySave/'MSAD_average.csv'), 'w') as textfile:
@@ -1926,8 +1926,8 @@ class GUI:
 
     def doMSAD(self):
         
-        if not os.path.exists(self.dn / Path('Plots/MSAD')):
-            os.mkdir(self.dn / Path('Plots/MSAD'))
+        if not os.path.exists(str(self.dn / Path('Plots/MSAD'))):
+            os.mkdir(str(self.dn / Path('Plots/MSAD')))
         
         directorySave = self.dn / Path('Plots/MSAD')
                       
@@ -1946,8 +1946,8 @@ class GUI:
         plt.axis('tight')
         plt.title('MSAD for all particles (long)')
         
-        fig0.savefig(directorySave/'MSAD_long_all.png')
-        fig0.savefig(directorySave/'MSAD_long_all.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSAD_long_all.svg'))
+        fig0.savefig(str(directorySave/'MSAD_long_all.svg'),format='svg',dpi=1200)
         plt.close()
 
 
@@ -1966,14 +1966,14 @@ class GUI:
         plt.axis('tight')
         plt.title('MSAD for all particles (short)')
         
-        fig0.savefig(directorySave/'MSAD_short_all.png')
-        fig0.savefig(directorySave/'MSAD_short_all.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSAD_short_all.svg'))
+        fig0.savefig(str(directorySave/'MSAD_short_all.svg'),format='svg',dpi=1200)
         plt.close()
         
         
         #Creates the folder for individual particles if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/MSAD/Individual')):
-            os.mkdir(self.dn / Path('Plots/MSAD/Individual'))
+        if not os.path.exists(str(self.dn / Path('Plots/MSAD/Individual'))):
+            os.mkdir(str(self.dn / Path('Plots/MSAD/Individual')))
         
         directorySave = self.dn / Path('Plots/MSAD/Individual')
         
@@ -1993,8 +1993,8 @@ class GUI:
                 plt.axis('tight')
                 plt.title('MSAD for particle ' + str(part))
                 
-                fig0.savefig(directorySave/('MSAD_short_P'+str(part)+'.png'))
-                fig0.savefig(directorySave/('MSAD_short_P'+str(part)+'.svg'),format='svg',dpi=1200)
+                fig0.savefig(str(directorySave/('MSAD_short_P'+str(part)+'.svg')))
+                fig0.savefig(str(directorySave/('MSAD_short_P'+str(part)+'.svg')),format='svg',dpi=1200)
                 plt.close()
                 
 
@@ -2014,8 +2014,8 @@ class GUI:
                 plt.axis('tight')
                 plt.title('Autocorrelation for particle ' + str(part))
                 
-                fig0.savefig(directorySave/('MSAD_long_P'+str(part)+'.png'))
-                fig0.savefig(directorySave/('MSAD_long_P'+str(part)+'.svg'),format='svg',dpi=1200)
+                fig0.savefig(str(directorySave/('MSAD_long_P'+str(part)+'.svg')))
+                fig0.savefig(str(directorySave/('MSAD_long_P'+str(part)+'.svg')),format='svg',dpi=1200)
                 plt.close()
         
         #Save data
@@ -2037,8 +2037,8 @@ class GUI:
             
     def doTrajectory(self):
         
-        if not os.path.exists(self.dn / Path('Plots/Trajectory')):
-            os.mkdir(self.dn / Path('Plots/Trajectory'))
+        if not os.path.exists(str(self.dn / Path('Plots/Trajectory'))):
+            os.mkdir(str(self.dn / Path('Plots/Trajectory')))
         
         directorySave = self.dn / Path('Plots/Trajectory')
         
@@ -2097,8 +2097,8 @@ class GUI:
 #            plt.axis('tight')
             plt.title('Trajectory for particle ' + str(part))
             
-            fig0.savefig(directorySave/('trajectory_P'+str(part)+'.png'))
-            fig0.savefig(directorySave/('trajectory_P'+str(part)+'.svg'),format='svg',dpi=1200)
+            fig0.savefig(str(directorySave/('trajectory_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('trajectory_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
             
         for p in range(self.nbParticles):
@@ -2124,8 +2124,8 @@ class GUI:
         '''Plots the average MSD with error bars in long and short format'''
         
         #Creates the folder MSD if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/MSD')):
-            os.mkdir(self.dn / Path('Plots/MSD'))
+        if not os.path.exists(str(self.dn / Path('Plots/MSD'))):
+            os.mkdir(str(self.dn / Path('Plots/MSD')))
         
         directorySave = self.dn / Path('Plots/MSD') 
                 
@@ -2138,8 +2138,8 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSD (long)')
         
-        fig0.savefig(directorySave/'MSD_average_long.png')
-        fig0.savefig(directorySave/'MSD_average_long.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSD_average_long.svg'))
+        fig0.savefig(str(directorySave/'MSD_average_long.svg'),format='svg',dpi=1200)
         plt.close()
         
         #Plot average MSD, short version
@@ -2151,8 +2151,8 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSD (short)')
         
-        fig0.savefig(directorySave/'MSD_average_short.png')
-        fig0.savefig(directorySave/'MSD_average_short.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSD_average_short.svg'))
+        fig0.savefig(str(directorySave/'MSD_average_short.svg'),format='svg',dpi=1200)
         plt.close()  
         
         with open(str(directorySave/'MSD_average.csv'), 'w') as textfile:
@@ -2179,8 +2179,8 @@ class GUI:
     def doMSD(self):
         
         #Creates the folder MSD if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/MSD')):
-            os.mkdir(self.dn / Path('Plots/MSD'))
+        if not os.path.exists(str(self.dn / Path('Plots/MSD'))):
+            os.mkdir(str(self.dn / Path('Plots/MSD')))
         
         directorySave = self.dn / Path('Plots/MSD')
         
@@ -2198,8 +2198,8 @@ class GUI:
         plt.axis('tight')
         plt.title('Short MSD for all particles')
         
-        fig0.savefig(directorySave/'MSD_short_all.png')
-        fig0.savefig(directorySave/'MSD_short_all.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSD_short_all.svg'))
+        fig0.savefig(str(directorySave/'MSD_short_all.svg'),format='svg',dpi=1200)
         plt.close()
 
         #Plots all MSDs (all points)
@@ -2216,13 +2216,13 @@ class GUI:
         plt.axis('tight')
         plt.title('Long MSD for all particles')
         
-        fig0.savefig(directorySave/'MSD_long_all.png')
-        fig0.savefig(directorySave/'MSD_long_all.svg',format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSD_long_all.svg'))
+        fig0.savefig(str(directorySave/'MSD_long_all.svg'),format='svg',dpi=1200)
         plt.close()
 
         #Creates the folder for individual particles if it's the first time
-        if not os.path.exists(self.dn / Path('Plots/MSD/Individual')):
-            os.mkdir(self.dn / Path('Plots/MSD/Individual'))
+        if not os.path.exists(str(self.dn / Path('Plots/MSD/Individual'))):
+            os.mkdir(str(self.dn / Path('Plots/MSD/Individual')))
         
         directorySave = self.dn / Path('Plots/MSD/Individual')
         
@@ -2241,8 +2241,8 @@ class GUI:
             plt.axis('tight')
             plt.title('Short MSD for particle ' + str(part))
             
-            fig0.savefig(directorySave/('MSD_short_P'+str(part)+'.png'))
-            fig0.savefig(directorySave/('MSD_short_P'+str(part)+'.svg'),format='svg',dpi=1200)
+            fig0.savefig(str(directorySave/('MSD_short_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSD_short_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
         #Plots all MSDs one by one (long version)
@@ -2260,8 +2260,8 @@ class GUI:
             plt.axis('tight')
             plt.title('Long MSD for particle ' + str(part))
             
-            fig0.savefig(directorySave/('MSD_long_P'+str(part)+'.png'))
-            fig0.savefig(directorySave/('MSD_long_P'+str(part)+'.svg'),format='svg',dpi=1200)
+            fig0.savefig(str(directorySave/('MSD_long_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSD_long_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
         
         for p in range(self.nbParticles):
