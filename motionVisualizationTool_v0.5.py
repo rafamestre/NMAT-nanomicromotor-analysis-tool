@@ -1,9 +1,9 @@
 """
 Motion Visualiation Tool
 
-v0.4beta
+v0.5
 
-30/10/2020
+08/11/2020
 
 Changes from past version:
     
