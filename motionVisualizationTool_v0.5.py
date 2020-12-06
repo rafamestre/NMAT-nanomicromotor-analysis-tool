@@ -29,6 +29,15 @@ UPDATED 20/03/17:
 UPDATED 30/10/2020:
     -) Added compatibility to Mac by changing the Path environments
     
+UPDATED 06/12/2020:
+    -) Fixed issue when reading some files. The summary table was assumed to always
+       appear first, but sometimes it appears last. Now it doesn't matter.
+    -) I overwrote by mistake the .png files and all of them were saved only in .svg.
+       Now it's fixed.
+    -) Noticed a problem that only affects Python 2.7: Some weird characters (like accents)
+       collide with the Path module and that Python version. Look more closely.
+       Temporary solution: no weird characters in files.
+    
 TO DO:
     
     -) Extract error from the fitting of the average MSD and add it to the results
@@ -38,6 +47,8 @@ TO DO:
     -) Change the autocorrelation function, leave only one
     -) Units in average MSD are reported as um^2/s and not um^2
     
+    
+
 @author: Rafael Mestre; rmestre@ibecbarcelona.eu; rafmescas1@gmail.com
 @contributions: certain functions come from the tracking software of Albert Miguel, v1.6.2
 
@@ -561,24 +572,26 @@ class GUI:
         I won't read angles or MSAD, they are calculated in this script.
         The MSAD information from the tracking file is wrong.'''
         
-        summaryParticle = True
+        summaryParticle = False
 
         with open(str(f),'r') as csvfile:
             fileReader = csv.reader(csvfile, delimiter=',')
             for row in fileReader:
                 if len(row) == 0:
                     continue
+                if row[0] == 'Summary table':
+                    summaryParticle = True
+                    '''The word Particle appears also in the summary table.
+                    In order to differentiate them and not try to read the data
+                    this flag if used. '''
                 if row[0] == 'Particle':
                     if not summaryParticle:
                         p = Particle()
                         p.particleLabel = row[1]
                         p.fileName = f
                         self.particles.append(p)
-                    if summaryParticle:
+                    else:
                         summaryParticle = False
-                        '''The first tile the word "Particle" appears is in the
-                        summary table. Therefore, when Particle appears the first
-                        time, it's ignored and summaryParticle is turned to 1'''
                 if row[0] == 'Time (seconds)':
                     self.particles[-1].time = [float(i) for i in row[1:] if i != '']
                 if row[0] == 'X (microm)':
@@ -874,7 +887,7 @@ class GUI:
         plt.legend()
         plt.title('MSD linear fitting for all particles')
         
-        fig0.savefig(str(directorySave/'MSD_linearFitting_average.svg'))
+        fig0.savefig(str(directorySave/'MSD_linearFitting_average.png'))
         fig0.savefig(str(directorySave/'MSD_linearFitting_average.svg'),format='svg',dpi=1200)
         plt.close()
     
@@ -920,7 +933,7 @@ class GUI:
             plt.legend()
             plt.title('MSD linear fitting for particle ' + str(part))
             
-            fig0.savefig(str(directorySave/('MSD_linearFitting_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSD_linearFitting_P'+str(part)+'.png')))
             fig0.savefig(str(directorySave/('MSD_linearFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
@@ -974,7 +987,7 @@ class GUI:
         plt.legend()
         plt.title('MSAD linear fitting for all particles')
         
-        fig0.savefig(str(directorySave/'MSAD_linearFitting_average.svg'))
+        fig0.savefig(str(directorySave/'MSAD_linearFitting_average.png'))
         fig0.savefig(str(directorySave/'MSAD_linearFitting_average.svg'),format='svg',dpi=1200)
         plt.close()
     
@@ -1023,7 +1036,7 @@ class GUI:
             plt.legend()
             plt.title('MSAD linear fitting for particle ' + str(part))
             
-            fig0.savefig(str(directorySave/('MSAD_linearFitting_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSAD_linearFitting_P'+str(part)+'.png')))
             fig0.savefig(str(directorySave/('MSAD_linearFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
@@ -1088,7 +1101,7 @@ class GUI:
         plt.legend()
         plt.title('MSD quadratic fitting for all particles')
         
-        fig0.savefig(str(directorySave/('MSD_quadraticFitting_average.svg')))
+        fig0.savefig(str(directorySave/('MSD_quadraticFitting_average.png')))
         fig0.savefig(str(directorySave/('MSD_quadraticFitting_average.svg')),format='svg',dpi=1200)
         plt.close()
     
@@ -1138,7 +1151,7 @@ class GUI:
             plt.legend()
             plt.title('MSD quadratic fitting for particle ' + str(part))
             
-            fig0.savefig(str(directorySave/('MSD_quadraticFitting_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSD_quadraticFitting_P'+str(part)+'.png')))
             fig0.savefig(str(directorySave/('MSD_quadraticFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
@@ -1214,7 +1227,7 @@ class GUI:
         plt.legend()
         plt.title('MSAD quadratic fitting for all particles')
         
-        fig0.savefig(str(directorySave/('MSAD_quadraticFitting_average.svg')))
+        fig0.savefig(str(directorySave/('MSAD_quadraticFitting_average.png')))
         fig0.savefig(str(directorySave/('MSAD_quadraticFitting_average.svg')),format='svg',dpi=1200)
         plt.close()
     
@@ -1267,7 +1280,7 @@ class GUI:
             plt.legend()
             plt.title('MSAD quadratic fitting for particle ' + str(part))
             
-            fig0.savefig(str(directorySave/('MSAD_quadraticFitting_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSAD_quadraticFitting_P'+str(part)+'.png')))
             fig0.savefig(str(directorySave/('MSAD_quadraticFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
@@ -1356,7 +1369,7 @@ class GUI:
         plt.legend()
         plt.title('MSD exponent for all particles')
         
-        fig0.savefig(str(directorySave/'MSD_logFitting_average.svg'))
+        fig0.savefig(str(directorySave/'MSD_logFitting_average.png'))
         fig0.savefig(str(directorySave/'MSD_logFitting_average.svg'),format='svg',dpi=1200)
         plt.close()
 
@@ -1406,7 +1419,7 @@ class GUI:
             plt.legend()
             plt.title('MSD exponent for particle ' + str(part))
             
-            fig0.savefig(str(directorySave/('MSD_logFitting_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSD_logFitting_P'+str(part)+'.png')))
             fig0.savefig(str(directorySave/('MSD_logFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
@@ -1471,7 +1484,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSD exponent (long)')
         
-        fig0.savefig(str(directorySave/'alpha_average_long.svg'))
+        fig0.savefig(str(directorySave/'alpha_average_long.png'))
         fig0.savefig(str(directorySave/'alpha_average_long.svg'),format='svg',dpi=1200)
         plt.close()
         
@@ -1484,7 +1497,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSD exponent (short)')
         
-        fig0.savefig(str(directorySave/'alpha_average_short.svg'))
+        fig0.savefig(str(directorySave/'alpha_average_short.png'))
         fig0.savefig(str(directorySave/'alpha_average_short.svg'),format='svg',dpi=1200)
         plt.close()  
         
@@ -1523,7 +1536,7 @@ class GUI:
         plt.axis('tight')
         plt.title('MSD exponent for all particles (long)')
         
-        fig0.savefig(str(directorySave/'alpha_long_all.svg'))
+        fig0.savefig(str(directorySave/'alpha_long_all.png'))
         fig0.savefig(str(directorySave/'alpha_long_all.svg'),format='svg',dpi=1200)
         plt.close()
 
@@ -1542,7 +1555,7 @@ class GUI:
         plt.axis('tight')
         plt.title('MSD exponent for all particles (short)')
         
-        fig0.savefig(str(directorySave/'alpha_short_all.svg'))
+        fig0.savefig(str(directorySave/'alpha_short_all.png'))
         fig0.savefig(str(directorySave/'alpha_short_all.svg'),format='svg',dpi=1200)
         plt.close()
         
@@ -1567,7 +1580,7 @@ class GUI:
             plt.axis('tight')
             plt.title('MSD exponent for particle ' + str(part))
             
-            fig0.savefig(str(directorySave/('alpha_short_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('alpha_short_P'+str(part)+'.png')))
             fig0.savefig(str(directorySave/('alpha_short_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
                 
@@ -1587,7 +1600,7 @@ class GUI:
             plt.axis('tight')
             plt.title('MSD exponent for particle ' + str(part))
             
-            fig0.savefig(str(directorySave/('alpha_long_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('alpha_long_P'+str(part)+'.png')))
             fig0.savefig(str(directorySave/('alpha_long_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
         
@@ -1631,7 +1644,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Instantaneous velocity for all particles')
         
-        fig0.savefig(str(directorySave/'instVel_all.svg'))
+        fig0.savefig(str(directorySave/'instVel_all.png'))
         fig0.savefig(str(directorySave/'instVel_all.svg'),format='svg',dpi=1200)
         plt.close()
 
@@ -1663,7 +1676,7 @@ class GUI:
                 plt.title('Instantaneous velocity for particle ' + str(part))
                 plt.legend()
                 
-                fig0.savefig(str(directorySave/('instVel_P'+str(part)+'.svg')))
+                fig0.savefig(str(directorySave/('instVel_P'+str(part)+'.png')))
                 fig0.savefig(str(directorySave/('instVel_P'+str(part)+'.svg')),format='svg',dpi=1200)
                 plt.close()
         
@@ -1704,7 +1717,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Average autocorrelation function (long)')
         
-        fig0.savefig(str(directorySave/'AutoCor_average_long.svg'))
+        fig0.savefig(str(directorySave/'AutoCor_average_long.png'))
         fig0.savefig(str(directorySave/'AutoCor_average_long.svg'),format='svg',dpi=1200)
         plt.close()
         
@@ -1717,7 +1730,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Average autocorrelation function (short)')
         
-        fig0.savefig(str(directorySave/'AutoCor_average_short.svg'))
+        fig0.savefig(str(directorySave/'AutoCor_average_short.png'))
         fig0.savefig(str(directorySave/'AutoCor_average_short.svg'),format='svg',dpi=1200)
         plt.close()  
         
@@ -1753,7 +1766,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Autocorrelation function for all particles (long)')
         
-        fig0.savefig(str(directorySave/'autocor_long_all.svg'))
+        fig0.savefig(str(directorySave/'autocor_long_all.png'))
         fig0.savefig(str(directorySave/'autocor_long_all.svg'),format='svg',dpi=1200)
         plt.close()
 
@@ -1773,7 +1786,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Autocorrelation function for all particles (short)')
         
-        fig0.savefig(str(directorySave/'autocor_short_all.svg'))
+        fig0.savefig(str(directorySave/'autocor_short_all.png'))
         fig0.savefig(str(directorySave/'autocor_short_all.svg'),format='svg',dpi=1200)
         plt.close()
         
@@ -1800,7 +1813,7 @@ class GUI:
                 plt.axis('tight')
                 plt.title('Autocorrelation for particle ' + str(part))
                 
-                fig0.savefig(str(directorySave/('autocor_short_P'+str(part)+'.svg')))
+                fig0.savefig(str(directorySave/('autocor_short_P'+str(part)+'.png')))
                 fig0.savefig(str(directorySave/('autocor_short_P'+str(part)+'.svg')),format='svg',dpi=1200)
                 plt.close()
                 
@@ -1821,7 +1834,7 @@ class GUI:
                 plt.axis('tight')
                 plt.title('Autocorrelation for particle ' + str(part))
                 
-                fig0.savefig(str(directorySave/('autocor_long_P'+str(part)+'.svg')))
+                fig0.savefig(str(directorySave/('autocor_long_P'+str(part)+'.png')))
                 fig0.savefig(str(directorySave/('autocor_long_P'+str(part)+'.svg')),format='svg',dpi=1200)
                 plt.close()
         
@@ -1859,7 +1872,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSAD (long)')
         
-        fig0.savefig(str(directorySave/'MSAD_average_long.svg'))
+        fig0.savefig(str(directorySave/'MSAD_average_long.png'))
         fig0.savefig(str(directorySave/'MSAD_average_long.svg'),format='svg',dpi=1200)
         plt.close()
         
@@ -1872,7 +1885,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSAD (short)')
         
-        fig0.savefig(str(directorySave/'MSAD_average_short.svg'))
+        fig0.savefig(str(directorySave/'MSAD_average_short.png'))
         fig0.savefig(str(directorySave/'MSAD_average_short.svg'),format='svg',dpi=1200)
         plt.close()  
         
@@ -1946,7 +1959,7 @@ class GUI:
         plt.axis('tight')
         plt.title('MSAD for all particles (long)')
         
-        fig0.savefig(str(directorySave/'MSAD_long_all.svg'))
+        fig0.savefig(str(directorySave/'MSAD_long_all.png'))
         fig0.savefig(str(directorySave/'MSAD_long_all.svg'),format='svg',dpi=1200)
         plt.close()
 
@@ -1966,7 +1979,7 @@ class GUI:
         plt.axis('tight')
         plt.title('MSAD for all particles (short)')
         
-        fig0.savefig(str(directorySave/'MSAD_short_all.svg'))
+        fig0.savefig(str(directorySave/'MSAD_short_all.png'))
         fig0.savefig(str(directorySave/'MSAD_short_all.svg'),format='svg',dpi=1200)
         plt.close()
         
@@ -1993,7 +2006,7 @@ class GUI:
                 plt.axis('tight')
                 plt.title('MSAD for particle ' + str(part))
                 
-                fig0.savefig(str(directorySave/('MSAD_short_P'+str(part)+'.svg')))
+                fig0.savefig(str(directorySave/('MSAD_short_P'+str(part)+'.png')))
                 fig0.savefig(str(directorySave/('MSAD_short_P'+str(part)+'.svg')),format='svg',dpi=1200)
                 plt.close()
                 
@@ -2014,7 +2027,7 @@ class GUI:
                 plt.axis('tight')
                 plt.title('Autocorrelation for particle ' + str(part))
                 
-                fig0.savefig(str(directorySave/('MSAD_long_P'+str(part)+'.svg')))
+                fig0.savefig(str(directorySave/('MSAD_long_P'+str(part)+'.png')))
                 fig0.savefig(str(directorySave/('MSAD_long_P'+str(part)+'.svg')),format='svg',dpi=1200)
                 plt.close()
         
@@ -2097,7 +2110,7 @@ class GUI:
 #            plt.axis('tight')
             plt.title('Trajectory for particle ' + str(part))
             
-            fig0.savefig(str(directorySave/('trajectory_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('trajectory_P'+str(part)+'.png')))
             fig0.savefig(str(directorySave/('trajectory_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
             
@@ -2138,7 +2151,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSD (long)')
         
-        fig0.savefig(str(directorySave/'MSD_average_long.svg'))
+        fig0.savefig(str(directorySave/'MSD_average_long.png'))
         fig0.savefig(str(directorySave/'MSD_average_long.svg'),format='svg',dpi=1200)
         plt.close()
         
@@ -2151,7 +2164,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Average MSD (short)')
         
-        fig0.savefig(str(directorySave/'MSD_average_short.svg'))
+        fig0.savefig(str(directorySave/'MSD_average_short.png'))
         fig0.savefig(str(directorySave/'MSD_average_short.svg'),format='svg',dpi=1200)
         plt.close()  
         
@@ -2198,7 +2211,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Short MSD for all particles')
         
-        fig0.savefig(str(directorySave/'MSD_short_all.svg'))
+        fig0.savefig(str(directorySave/'MSD_short_all.png'))
         fig0.savefig(str(directorySave/'MSD_short_all.svg'),format='svg',dpi=1200)
         plt.close()
 
@@ -2216,7 +2229,7 @@ class GUI:
         plt.axis('tight')
         plt.title('Long MSD for all particles')
         
-        fig0.savefig(str(directorySave/'MSD_long_all.svg'))
+        fig0.savefig(str(directorySave/'MSD_long_all.png'))
         fig0.savefig(str(directorySave/'MSD_long_all.svg'),format='svg',dpi=1200)
         plt.close()
 
@@ -2241,7 +2254,7 @@ class GUI:
             plt.axis('tight')
             plt.title('Short MSD for particle ' + str(part))
             
-            fig0.savefig(str(directorySave/('MSD_short_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSD_short_P'+str(part)+'.png')))
             fig0.savefig(str(directorySave/('MSD_short_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
 
@@ -2260,7 +2273,7 @@ class GUI:
             plt.axis('tight')
             plt.title('Long MSD for particle ' + str(part))
             
-            fig0.savefig(str(directorySave/('MSD_long_P'+str(part)+'.svg')))
+            fig0.savefig(str(directorySave/('MSD_long_P'+str(part)+'.png')))
             fig0.savefig(str(directorySave/('MSD_long_P'+str(part)+'.svg')),format='svg',dpi=1200)
             plt.close()
         
@@ -2282,7 +2295,7 @@ class GUI:
 if __name__ == '__main__':
     root = tkinter.Tk()
     gui = GUI(root)
-    root.title("Motion Visualization Tool v0.4")
+    root.title("Motion Visualization Tool v0.5")
     w = 350
     h = 700
     x = 200
