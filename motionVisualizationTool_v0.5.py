@@ -43,16 +43,15 @@ TO DO:
     -) Extract error from the fitting of the average MSD and add it to the results
     -) Do third and fourth degree fittings
     -) Fit autocorrelation?
-    -) Check if tidynamics is necessary and if so make it download automatically
     -) Change the autocorrelation function, leave only one
-    -) Units in average MSD are reported as um^2/s and not um^2
-    
+    -) Fix the error reported in the previous update (06/12/20)
     
 
 @author: Rafael Mestre; rmestre@ibecbarcelona.eu; rafmescas1@gmail.com
 @contributions: certain functions come from the tracking software of Albert Miguel, v1.6.2
 
-This code was written to be compatible for both Python 2.6+ and 3.3+
+This code was written to be compatible for both Python 2.6+ and 3.3+, as well
+as both Windows and Mac OS.
 
 Additions to make the code compatible to Python 2 and 3
 Check the page: https://python-future.org/compatible_idioms.html
