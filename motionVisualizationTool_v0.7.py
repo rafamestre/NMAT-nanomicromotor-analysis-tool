@@ -1,59 +1,29 @@
 """
 NMAT: Nano-micromotor Analysis Tool
 
-v0.6
+v0.7
 
-19/11/2021
+04/01/2022
 
 Changes from past version:
 
-    -) A couple of functions that read other type of data in a different format
-        have been added, but not implemented.
-    -) An ammendment in the reading of time in function readFile() has been added.
- 
-UPDATED 08/11/2020
+    -) Functions that compute particle-specific information, like MSD, MSAD, instvel,
+        have been moved inside the Particle class.
+    -) The script now computes the MSD directly from the x,y data. The time
+        displacement (timeD) vector is now computed and not read from file, normalising
+        the input time.
 
-    -) The angles are now calculated from the trajectories instead of taking
-        it from the tracking .csv file. This is because the data of the angles
-        might not appear if this option was not selected during tracking.
-        Now, MSAD and autocorrelation can be calculated even if the angle
-        doesn't appear in the tracking .csv file.
-    -) The MSAD and autocorrelation are calculated in this script, even if
-        they are in the tracking .csv file. This is because MSAD from these 
-        files is wrong.
-    -) The MSAD can be fitted now to a linear or quadratic formula and the
-        rotational diffusion coefficient and time are extracted. 
-    -) In the summary data of the fittings, the average is done over
-        all non-nan numbers. Before if there was one nan, the average was
-        always nan.
-    -) Units in labels and summary files have been fixed all along the results.
-    
-UPDATED 20/03/17:
-    -) The summary of MSAD quadratic fitting was wrong. It was reporting the linear
-        speed instead of the rotational one.
-        
-UPDATED 30/10/2020:
-    -) Added compatibility to Mac by changing the Path environments
-    
-UPDATED 06/12/2020:
-    -) Fixed issue when reading some files. The summary table was assumed to always
-       appear first, but sometimes it appears last. Now it doesn't matter.
-    -) I overwrote by mistake the .png files and all of them were saved only in .svg.
-       Now it's fixed.
-    -) Noticed a problem that only affects Python 2.7: Some weird characters (like accents)
-       collide with the Path module and that Python version. Look more closely.
-       Temporary solution: no weird characters in files.
     
 TO DO:
     
     -) Extract error from the fitting of the average MSD and add it to the results
     -) Do third and fourth degree fittings
-    -) Fit autocorrelation?
-    -) Change the autocorrelation function, leave only one
-    -) Fix the error reported in the previous update (06/12/20)
     -) Add summary file of ALL the MSDs, trajectories, MSADs, etc., in the same
         file, inside the "individual" folder.
     -) Add an option: "use only trackings longer than X s".
+    -) Make the summary file of the quadratic fitting NOT do the average if the
+       speed squared is negative, to avoid confusions.
+    -) Add R2 to the fittings.
     
 
 @author: Rafael Mestre; rmestre@ibecbarcelona.eu; rafmescas1@gmail.com
@@ -270,7 +240,7 @@ def velocity_auto_correlation(vx,vy):
 class Particle:
     def __init__(self):
         
-        self.particleLabel = 0
+        self.particleLabel = None
         self.time = list()
         self.X = list()
         self.Y = list()
@@ -279,29 +249,29 @@ class Particle:
         self.v = list()
         self.vx = list()
         self.vy = list()
+        self.w = list()
         self.angle = list()
         self.angleExtended = list()
         self.timeD = list()
         self.MSAD = list()
         self.autoCor = list()
-        self.autoCorstd = list()
-        self.FPS = 25
+        self.FPS = None
         self.fileName = ''
         
         self.alpha = list()
-        self.alphaFitting = 0
-        self.diffusionAlphaFitting = 0
-        self.speedQuadraticFitting = 0
-        self.speedSquaredQuadraticFitting = 0
-        self.diffusionQuadraticFitting = 0
-        self.diffusionLinearFitting = 0
+        self.alphaFitting = None
+        self.diffusionAlphaFitting = None
+        self.speedQuadraticFitting = None
+        self.speedSquaredQuadraticFitting = None
+        self.diffusionQuadraticFitting = None
+        self.diffusionLinearFitting = None
         
-        self.rotSpeedQuadraticFitting = 0
-        self.rotSpeedSquaredQuadraticFitting = 0
-        self.rotDiffusionQuadraticFitting = 0
-        self.rotDiffusionLinearFitting = 0
-        self.tauQuadraticFitting = 0
-        self.tauLinearFitting = 0
+        self.rotSpeedQuadraticFitting = None
+        self.rotSpeedSquaredQuadraticFitting = None
+        self.rotDiffusionQuadraticFitting = None
+        self.rotDiffusionLinearFitting = None
+        self.tauQuadraticFitting = None
+        self.tauLinearFitting = None
 
         
         self.valid = False
@@ -314,6 +284,130 @@ class Particle:
                 num = np.log(self.MSD[i+1])-np.log(self.MSD[i])
                 den = np.log(self.timeD[i+1])-np.log(self.timeD[i])
                 self.alpha.append(num/den)
+
+    def calculateInstVel(self):
+        
+        if self.valid and len(self.v) == 0:
+            #Calculates the instantenous velocity from the X,Y coordinates
+            #From the centered differences of second order
+            #Adapted from tracking software v 1.6.2
+            order = 2
+            X = self.X
+            Y = self.Y
+            
+            if len(X) > 2*order:
+                vx = centered_difference(X, order)
+                vy = centered_difference(Y, order)
+            
+            vel_mod = np.sqrt(vx**2+vy**2) * self.FPS
+            self.v = vel_mod
+            self.vx = vx
+            self.vy = vy
+
+
+    def calculateAngles(self):
+
+        if self.valid and len(self.angle) == 0:
+            #Angle taken from velocity
+            anglesVel = np.around(np.arctan2(self.vy, 
+                                self.vx) * (180/np.pi)) 
+            self.angle = anglesVel
+            angles = list(extend_angles(anglesVel)) #Continuous angles
+            self.angleExtended = angles
+            #Calculates also rotational velocity
+            w = centered_difference(angles, 2) * self.FPS
+            self.w = w
+
+    def calculateMSAD(self):
+        
+        if self.valid and len(self.MSAD) == 0:
+            self.MSAD = self.mean_square(self.angleExtended)
+
+    def mean_square(self,vector):
+        '''Taken from tracking software v. 1.6.2'''
+        #Input: vector with data
+        #Output: mean square displacement given by MSD(p) = sum( (f(i+p)-f(i))**2)/total
+        length = len(vector)
+        intList = np.arange(1,length) #intervals
+        MSD = np.arange(1,length, dtype = float) #To save the MSD values
+        for interval in intList:
+            intVector = [1]+[0]*(interval-1)+[-1] #Ex: for int = 3 you have [1,0,0,-1]
+            #With "valid" you only take the overlapping points of the convolution
+            convolution = np.convolve(vector,intVector,'valid')
+            MSDlist = convolution**2
+            MSD[interval-1] = np.average(MSDlist)
+        return MSD
+
+    def calculateAutoCorrelation(self):
+        
+        if self.valid and len(self.autoCor) == 0:
+            vector = self.angleExtended
+            l = len(vector)
+            intList = np.arange(1,l)
+            AAC = np.arange(1,l, dtype = float)
+            AAC_dev = np.arange(1,l, dtype =float)
+            for interval in intList:
+                intVector = [1]+[0]*(interval-1)+[-1]
+                convolution = np.convolve(vector, intVector, 'valid')
+                AACList = np.cos(convolution)
+                AAC[interval-1] = np.average(AACList)
+                AAC_dev[interval-1] = np.std(AACList)
+            self.autoCor = AAC
+
+
+    def autocorrFFT(self,x):
+        '''Calculates the autocorrelation FFT of a list of numbers.
+        It's needed by the method MSD_fft'''
+        
+        N=len(x)
+        F = np.fft.fft(x, n=2*N)  #2*N because of zero-padding
+        PSD = F * F.conjugate()
+        res = np.fft.ifft(PSD)
+        res = (res[:N]).real   #now we have the autocorrelation in convention B
+        n=np.arange(N, 0, -1) #divide res(m) by (N-m)
+        return res/n #Normalized auto-correlation
+
+
+    def MSD_fft(self,xvector,yvector,dt=1):
+        r'''Performs the MSD very efficiently using FFT. The result is time averaged.    
+        The discrete MSD is separated in S1 and 2*S2.
+        Based on https://www.neutron-sciences.org/articles/sfn/abs/2011/01/sfn201112010/sfn201112010.html
+        Code adapted from https://stackoverflow.com/questions/34222272/computing-mean-square-displacement-using-python-and-fft
+        Scales with O(NlogN).
+        '''
+        
+        pos = np.array([xvector, yvector]).T
+        N=len(pos)
+        
+        time_list = np.arange(0,N)*dt
+        
+        
+        D=np.square(pos).sum(axis=1) #x(i)**2 + y(i)**2
+        D=np.append(D,0) #To make S1[0] equal to D[0]
+        Q=2*D.sum()
+        S1=np.zeros(N)
+        
+        for m in range(N):
+            Q=Q-D[m-1]-D[N-m]
+            S1[m]=Q/(N-m)
+            
+    #    print 's1', time.time() - s1t
+    
+        S2=sum([self.autocorrFFT(pos[:, i]) for i in range(pos.shape[1])])
+        
+    #    print 's2', time.time()-s2t
+        
+        msd = S1 - 2*S2
+        return time_list, msd[0:]
+
+
+    def calculateMSD(self):
+        
+        if self.valid and len(self.MSD) == 0:
+
+            _, MSD = self.MSD_fft(xvector=self.X,
+                                      yvector=self.Y,dt=1/self.FPS)
+            self.MSD = MSD[1:]
 
 
 class GUI:
@@ -719,6 +813,7 @@ class GUI:
                             self.particles[-1].time = [float(i) for i in row[1:] if i != '']
                             deltaT = self.particles[-1].time[1] - self.particles[-1].time[0]
                             self.particles[-1].timeD = [deltaT*i for i in range(1,len(self.particles[-1].time))]
+                            self.particles[-1].FPS = 1/self.particles[-1].timeD[0]
                             timeRead = True
                         except:
                             continue
@@ -802,6 +897,7 @@ class GUI:
                     if len(time)>1:
                         deltaT = time[1] - time[0]
                         self.particles[-1].timeD = [deltaT*i for i in range(1,len(self.particles[-1].time))]
+                        self.particles[-1].FPS = 1/self.particles[-1].timeD[0]
 
     
             
@@ -842,15 +938,19 @@ class GUI:
             self.calculateAngles() #The angles are calculated, extended and expressed in rad
 
         #The MSAD and autocorrelation are calculated before computing the averages
-        if self.MSADFitting.get():
+        if self.MSADFitting.get() or self.calculateMSAD.get():
             self.computeMSAD()            
 
         if self.autocorrelation.get():
-            self.calculateAutocorrelation2()
+            self.calculateAutocorrelation()
+
+        if self.MSDFitting.get() or self.calculateMSD.get():
+            self.computeMSD()            
         
         if self.calculateAverage.get():
             self.computeAverages()
         
+
         if self.calculateMSD.get():
             self.doMSD()
             if self.calculateAverage.get():
@@ -862,7 +962,7 @@ class GUI:
         if self.instVelocity.get():
             #Instantenous velocity is not a requirement, it should be calculated
             #if it doesn't exist
-            self.calculateInstVel()
+            # self.calculateInstVel()
             self.doInstVel()
         
             
@@ -928,23 +1028,6 @@ class GUI:
         print("Analysis finished")
 
 
-    def calculateInstVel(self):
-        #Calculates the instantenous velocity from the X,Y coordinates
-        #From the centered differences of second order
-        #Adapted from tracking software v 1.6.2
-        order = 2
-        for part in range(self.nbParticles):
-            X = self.validParticles[part].X
-            Y = self.validParticles[part].Y
-            
-            if len(X) > 2*order:
-                vx = centered_difference(X, order)
-                vy = centered_difference(Y, order)
-            
-            vel_mod = np.sqrt(vx**2+vy**2) * self.validParticles[part].FPS
-            self.validParticles[part].v = vel_mod
-            self.validParticles[part].vx = vx
-            self.validParticles[part].vy = vy
                                                           
     def calculateAngles(self):
         #Calculates the angles from the instantaneous velocity
@@ -952,48 +1035,32 @@ class GUI:
         #Adapted from tracking software v 1.6.2
         
         #Checks if information about instantaneous velocity is there
-        self.calculateInstVel()
+
         
         for part in range(self.nbParticles):
-            #Angle taken from velocity
-            anglesVel = np.around(np.arctan2(self.validParticles[part].vy, 
-                                self.validParticles[part].vx) * (180/np.pi)) 
-            self.validParticles[part].angle = anglesVel
-            angles = list(extend_angles(anglesVel)) #Continuous angles
-            self.validParticles[part].angleExtended = angles
-            #Calculates also rotational velocity
-            w = centered_difference(angles, 2) * self.validParticles[part].FPS
-            self.validParticles[part].w = w
+            #Calculate instantaneous velocity if it hasn't been done
+            self.validParticles[part].calculateInstVel()
+            self.validParticles[part].calculateAngles()
+
+
+#     def calculateAutocorrelation(self):
+#         #Calculates the velocity autocorrelation function
+#         for part in range(self.nbParticles):
+#             vx = self.validParticles[part].vx
+#             vy = self.validParticles[part].vy
+#             vel = [[vx[i],vy[i]] for i in range(len(vx))]
+# #            vac = velocity_auto_correlation(vx,vy)
+#             vac = tidynamics.acf(vel) * self.validParticles[part].v[0]**2
+# #            vac = vac * self.validParticles[part].v**2
+# #            _, AAC, AAC_dev = angular_auto_correlation(self.validParticles[part].angleExtended)
+# #            print(vac[:10])
+# #            print(AAC[:10])
+#             self.validParticles[part].autoCor = vac[:-1]
 
     def calculateAutocorrelation(self):
-        #Calculates the velocity autocorrelation function
-        for part in range(self.nbParticles):
-            vx = self.validParticles[part].vx
-            vy = self.validParticles[part].vy
-            vel = [[vx[i],vy[i]] for i in range(len(vx))]
-#            vac = velocity_auto_correlation(vx,vy)
-            vac = tidynamics.acf(vel) * self.validParticles[part].v[0]**2
-#            vac = vac * self.validParticles[part].v**2
-#            _, AAC, AAC_dev = angular_auto_correlation(self.validParticles[part].angleExtended)
-#            print(vac[:10])
-#            print(AAC[:10])
-            self.validParticles[part].autoCor = vac[:-1]
-
-    def calculateAutocorrelation2(self):
         
         for part in range(self.nbParticles):
-            vector = self.validParticles[part].angleExtended
-            l = len(vector)
-            intList = np.arange(1,l)
-            AAC = np.arange(1,l, dtype = float)
-            AAC_dev = np.arange(1,l, dtype =float)
-            for interval in intList:
-                intVector = [1]+[0]*(interval-1)+[-1]
-                convolution = np.convolve(vector, intVector, 'valid')
-                AACList = np.cos(convolution)
-                AAC[interval-1] = np.average(AACList)
-                AAC_dev[interval-1] = np.std(AACList)
-            self.validParticles[part].autoCor = AAC
+            self.validParticles[part].calculateAutoCorrelation()
 
     
     def computeAverages(self):
@@ -1206,7 +1273,7 @@ class GUI:
             fig0 = plt.figure(0,figsize=(12, 10))
         
             timeD = self.validParticles[part].timeD
-            MSAD = self.validParticles[part].MSD
+            MSAD = self.validParticles[part].MSAD
             
             popt, pcov = curve_fit(linearZero, timeD[:self.nbPoints], MSAD[:self.nbPoints])  
             
@@ -1235,7 +1302,7 @@ class GUI:
                 textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
                 textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                 textfile.write("Fitting equation,MSD = 4Dr*t\n")
-                textfile.write("Dr (rad^2/s),%.6f\n" % (self.validParticles[p].diffusionLinearFitting))
+                textfile.write("Dr (rad^2/s),%.6f\n" % (self.validParticles[p].rotDiffusionLinearFitting))
                 textfile.write("tau (s),%.6f\n" % (self.validParticles[p].tauLinearFitting))
 
         #Save summary data
@@ -1245,8 +1312,8 @@ class GUI:
             textfile.write("Fitting equation,MSAD = 4Dr*t\n")
             textfile.write('Dr (rad^2/s),')
             for p in range(self.nbParticles):
-                textfile.write("%.6f," % (self.validParticles[p].diffusionLinearFitting))
-                Dlist.append(self.validParticles[p].diffusionLinearFitting)
+                textfile.write("%.6f," % (self.validParticles[p].rotDiffusionLinearFitting))
+                Dlist.append(self.validParticles[p].rotDiffusionLinearFitting)
             textfile.write('\n')
             textfile.write("tau (s),")
             for p in range(self.nbParticles):
@@ -1399,7 +1466,7 @@ class GUI:
         
         directorySave = self.dn / Path('Plots/FittingsMSAD')         
 
-        #Plot MSD  fitting info
+        #Plot MASD  fitting info
         fig0 = plt.figure(0,figsize=(12, 10))
                 
         popt, pcov = curve_fit(quadratic, self.averageTimeD[:self.nbPoints], self.averageMSAD[:self.nbPoints])  
@@ -1442,7 +1509,7 @@ class GUI:
         
         directorySave = self.dn / Path('Plots/FittingsMSAD/Quadratic')
         
-        #Plot MSD with fitting info
+        #Plot MASD with fitting info
         for part in range(self.nbParticles):
             
             fig0 = plt.figure(0,figsize=(12, 10))
@@ -1820,8 +1887,10 @@ class GUI:
         
         #Plot all velocities
         fig0 = plt.figure(0,figsize=(12, 10))
-        for part in range(self.nbParticles):
         
+        for part in range(self.nbParticles):
+            
+            self.validParticles[part].calculateInstVel()
             timeD = self.validParticles[part].timeD
             v = self.validParticles[part].v[:-1] #The speed has one value less
             
@@ -2101,75 +2170,8 @@ class GUI:
 
 
 
-    def mean_square(self,vector):
-        '''Taken from tracking software v. 1.6.2'''
-        #Input: vector with data
-        #Output: mean square displacement given by MSD(p) = sum( (f(i+p)-f(i))**2)/total
-        length = len(vector)
-        intList = np.arange(1,length) #intervals
-        MSD = np.arange(1,length, dtype = float) #To save the MSD values
-        for interval in intList:
-            intVector = [1]+[0]*(interval-1)+[-1] #Ex: for int = 3 you have [1,0,0,-1]
-            #With "valid" you only take the overlapping points of the convolution
-            convolution = np.convolve(vector,intVector,'valid')
-            MSDlist = convolution**2
-            MSD[interval-1] = np.average(MSDlist)
-        return MSD
 
 
-    def autocorrFFT(self,x):
-        '''Calculates the autocorrelation FFT of a list of numbers.
-        It's needed by the method MSD_fft'''
-        
-        N=len(x)
-        F = np.fft.fft(x, n=2*N)  #2*N because of zero-padding
-        PSD = F * F.conjugate()
-        res = np.fft.ifft(PSD)
-        res = (res[:N]).real   #now we have the autocorrelation in convention B
-        n=np.arange(N, 0, -1) #divide res(m) by (N-m)
-        return res/n #Normalized auto-correlation
-
-
-    def MSD_fft(self,xvector,yvector,dt=1):
-        r'''Performs the MSD very efficiently using FFT. The result is time averaged.    
-        The discrete MSD is separated in S1 and 2*S2.
-        Based on https://www.neutron-sciences.org/articles/sfn/abs/2011/01/sfn201112010/sfn201112010.html
-        Code adapted from https://stackoverflow.com/questions/34222272/computing-mean-square-displacement-using-python-and-fft
-        Scales with O(NlogN).
-        '''
-        
-        pos = np.array([xvector, yvector]).T
-        N=len(pos)
-        
-        time_list = np.arange(0,N)*dt
-        
-        
-        D=np.square(pos).sum(axis=1) #x(i)**2 + y(i)**2
-        D=np.append(D,0) #To make S1[0] equal to D[0]
-        Q=2*D.sum()
-        S1=np.zeros(N)
-        
-        for m in range(N):
-            Q=Q-D[m-1]-D[N-m]
-            S1[m]=Q/(N-m)
-            
-    #    print 's1', time.time() - s1t
-    
-        S2=sum([self.autocorrFFT(pos[:, i]) for i in range(pos.shape[1])])
-        
-    #    print 's2', time.time()-s2t
-        
-        msd = S1 - 2*S2
-        return time_list, msd[0:]
-
-
-    def computeMSD2(self):
-        
-        for part in range(self.nbParticles):
-
-            _, MSD = self.MSD_fft(xvector=self.validParticles[part].X,
-                                      yvector=self.validParticles[part].Y,dt=1/self.validParticles[part].FPS)
-            self.validParticles[part].MSD = MSD[1:]
 
 
     def computeMSAD(self):
@@ -2178,7 +2180,8 @@ class GUI:
         MSAD again. For that, it needs angle (continuous!!) and times data'''
         
         for part in range(self.nbParticles):
-            self.validParticles[part].MSAD = self.mean_square(self.validParticles[part].angleExtended)
+            self.validParticles[part].calculateMSAD()
+            # self.validParticles[part].MSAD = self.mean_square(self.validParticles[part].angleExtended)
         
 
 
@@ -2536,6 +2539,11 @@ class GUI:
                 for m in MSD:
                     textfile.write(("%.6f," % (m)))
         
+
+    def computeMSD(self):
+
+        for part in range(self.nbParticles):
+            self.validParticles[part].calculateMSD()
 
 if __name__ == '__main__':
     root = tkinter.Tk()
