@@ -3,7 +3,7 @@ NMAT: Nano-micromotor Analysis Tool
 
 v0.7
 
-04/01/2022
+05/01/2022
 
 Changes from past version:
 
@@ -12,18 +12,16 @@ Changes from past version:
     -) The script now computes the MSD directly from the x,y data. The time
         displacement (timeD) vector is now computed and not read from file, normalising
         the input time.
+    -) Third and fourth degree fittings and full equation fitting added.
+    -) R^2 added to the fittings.
 
     
 TO DO:
     
     -) Extract error from the fitting of the average MSD and add it to the results
-    -) Do third and fourth degree fittings
     -) Add summary file of ALL the MSDs, trajectories, MSADs, etc., in the same
         file, inside the "individual" folder.
     -) Add an option: "use only trackings longer than X s".
-    -) Make the summary file of the quadratic fitting NOT do the average if the
-       speed squared is negative, to avoid confusions.
-    -) Add R2 to the fittings.
     
 
 @author: Rafael Mestre; rmestre@ibecbarcelona.eu; rafmescas1@gmail.com
@@ -62,6 +60,17 @@ from builtins import object
 from builtins import range
 import sys
 version = sys.version_info[0]
+
+import warnings
+
+#ignoring warnings that result in nan's
+warnings.filterwarnings("ignore", message="divide by zero encountered") 
+warnings.filterwarnings("ignore", message="invalid value encountered")
+warnings.filterwarnings("ignore", message="Covariance of the parameters")
+warnings.filterwarnings("ignore", message="overflow encountered")
+warnings.filterwarnings("ignore", message="Degrees of freedom <= 0 for slice")
+warnings.filterwarnings("ignore", message="Mean of empty slice")
+
 
 import tkinter
 from tkinter import ttk
@@ -104,6 +113,15 @@ def linear(x,a,b):
 def quadratic(x,a,b):
     return a*x + b*x**2
 
+def cubic(x,a,b,c):
+    return a*x + b*x**2 + c*x**3
+
+def fourthOrder(x,a,b,c,d):
+    return a*x + b*x**2 + c*x**3 + d*x**4
+
+def fullEquation(x,v,tau,D):
+    return 4*D*x + 2*(v**2)*(tau**2)*(x/tau + np.exp(-x/tau) - 1)
+
 def linearZero(x,a):
     return a*x
     
@@ -121,6 +139,15 @@ def powerLaw2(x,a,b):
     
 def exponential2(x,a,b):
     return a*np.exp(-x/b)
+
+def calculate_rsquared(xdata, ydata, popt, function):
+    #From: https://stackoverflow.com/a/37899817
+    residuals = ydata - function(np.asarray(xdata), *popt)
+    ss_res = np.sum(residuals**2)
+    ss_tot = np.sum((ydata-np.mean(ydata))**2)
+    r_squared = 1 - (ss_res / ss_tot)
+    return r_squared
+        
 
 plt.close("all")
 
@@ -230,8 +257,8 @@ def velocity_auto_correlation(vx,vy):
     acorry = np.correlate(vy,vy,'full')[n-1:]
     # sum the correlations for each component
     acorr = np.sum([acorrx,acorry], axis = 0)
-    print(np.asarray(acorr).shape)
-    print(acorry)
+    # print(np.asarray(acorr).shape)
+    # print(acorry)
     # divide by the number of values actually measured and return
     acorr = acorr/(n - np.arange(n))
     
@@ -261,17 +288,41 @@ class Particle:
         self.alpha = list()
         self.alphaFitting = None
         self.diffusionAlphaFitting = None
+        self.r_squaredAlphaFitting = None
+        
         self.speedQuadraticFitting = None
         self.speedSquaredQuadraticFitting = None
         self.diffusionQuadraticFitting = None
-        self.diffusionLinearFitting = None
+        self.r_squaredQuadraticFitting = None
         
+        self.diffusionLinearFitting = None
+        self.r_squaredLinearFitting = None
+
+        self.speedCubicFitting = None
+        self.speedSquaredCubicFitting = None
+        self.tauCubicFitting = None
+        self.diffusionCubicFitting = None
+        self.r_squaredCubicFitting = None
+
+        self.speedFourthOrderFitting = None
+        self.speedSquaredFourthOrderFitting = None
+        self.tauFourthOrderFitting = None
+        self.diffusionFourthOrderFitting = None
+        self.r_squaredFourthOrderFitting = None
+
+        self.speedFullFitting = None
+        self.tauFullFitting = None
+        self.diffusionFullFitting = None
+        self.r_squaredFullFitting = None
+
         self.rotSpeedQuadraticFitting = None
         self.rotSpeedSquaredQuadraticFitting = None
         self.rotDiffusionQuadraticFitting = None
         self.rotDiffusionLinearFitting = None
         self.tauQuadraticFitting = None
         self.tauLinearFitting = None
+        self.r_squaredRotLinearFitting = None
+        self.r_squaredRotQuadraticFitting = None
 
         
         self.valid = False
@@ -514,12 +565,14 @@ class GUI:
                                                     variable=self.MSDFitting, 
                                                     onvalue = True, offvalue = False,
                                                     command = self.fittingChecked)
-        self.fittingCombo = ttk.Combobox(master, values = ["Quadratic", "Linear","Both"],width=14)
+        self.fittingCombo = ttk.Combobox(master, values = ["Linear", "Quadratic",
+                                                           "Cubic", "Fourth order", 
+                                                           "Full equation", "All"],width=14)
         self.fittingButtonMSAD = tkinter.Checkbutton(master, text="Fit MSAD?", 
                                                     variable=self.MSADFitting, 
                                                     onvalue = True, offvalue = False,
                                                     command = self.fittingMSADChecked)
-        self.fittingComboMSAD = ttk.Combobox(master, values = ["Quadratic", "Linear","Both"],width=14)
+        self.fittingComboMSAD = ttk.Combobox(master, values = ["Linear", "Quadratic","Both"],width=14)
 
         self.alphaButton = tkinter.Checkbutton(master,text="Perform logarithmic fitting to MSD?",
                                                variable=self.fitAlpha, 
@@ -652,7 +705,7 @@ class GUI:
                     
             self.AverageButton.select()
             
-            self.fittingCombo.set("Both")
+            self.fittingCombo.set("All")
             self.fittingComboMSAD.set("Both")
             self.fittingChecked()
             self.fittingMSADChecked()
@@ -869,9 +922,6 @@ class GUI:
                             p.fileName = fileName
                             self.particles.append(p)
                             particleFound = True
-                        print(timeColumn)
-                        print(xColumn)
-                        print(yColumn)
                         try:
                             time.append(float(row[timeColumn]))
                             x.append(float(row[xColumn]))
@@ -987,13 +1037,34 @@ class GUI:
             self.doLinearFitting()
             if self.calculateAverage.get():
                 self.doLinearFittingAverage()
+
+        if self.MSDFitting.get() and self.fittingCombo.get() == "Cubic":
+            self.doCubicFitting()
+            if self.calculateAverage.get():
+                self.doCubicFittingAverage()
+
+        if self.MSDFitting.get() and self.fittingCombo.get() == "Fourth order":
+            self.doFourthOrderFitting()
+            if self.calculateAverage.get():
+                self.doFourthOrderFittingAverage()
+
+        if self.MSDFitting.get() and self.fittingCombo.get() == "Full equation":
+            self.doFullEquationFitting()
+            if self.calculateAverage.get():
+                self.doFullEquationFittingAverage()
                 
-        if self.MSDFitting.get() and self.fittingCombo.get() == "Both":
+        if self.MSDFitting.get() and self.fittingCombo.get() == "All":
             self.doLinearFitting()
             self.doQuadraticFitting()
+            self.doCubicFitting()
+            self.doFourthOrderFitting()
+            self.doFullEquationFitting()
             if self.calculateAverage.get():
                 self.doLinearFittingAverage()
                 self.doQuadraticFittingAverage()
+                self.doCubicFittingAverage()
+                self.doFourthOrderFittingAverage()
+                self.doFullEquationFittingAverage()
                 
         #Do MSAD fittings
         
@@ -1115,43 +1186,7 @@ class GUI:
         longestParticle = totalTime.index(max(totalTime))
         self.averageTimeD = self.validParticles[longestParticle].timeD
         
-        
-    def doLinearFittingAverage(self):
-        #The doAverageMSD function should have been run first
-        #so that the averageMSD variable exists
-        
-        #Creates the folder if it's the first time
-        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
-            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
-        
-        directorySave = self.dn / Path('Plots/FittingsMSD')          
-
-        #Plot MSD  fitting info
-        fig0 = plt.figure(0,figsize=(12, 10))
-                
-        popt, pcov = curve_fit(linearZero, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
-        
-        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
-        
-        label = "Fitting equation: MSD = $4D_{t}t$\n$D_t$ = %.4f $\mu$m$^2$/s" % (popt[0]/4)
-        plt.plot(self.averageTimeD[:self.nbPoints],linearZero(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
-                 label = label)
     
-        plt.xlabel('$\Delta$t (s)')
-        plt.ylabel('MSD ($\mu$m$^2$)')
-        plt.axis('tight')
-        plt.legend()
-        plt.title('MSD linear fitting for all particles')
-        
-        fig0.savefig(str(directorySave/'MSD_linearFitting_average.png'))
-        fig0.savefig(str(directorySave/'MSD_linearFitting_average.svg'),format='svg',dpi=1200)
-        plt.close()
-    
-        #Save data
-        with open(str(directorySave/'MSD_linearFitting_average.csv'), 'w') as textfile:
-            textfile.write("Fitting equation,MSD = 4D*t\n")
-            textfile.write("D (um^2/s),%.6f\n" % (popt[0]/4))
-
 
     def doLinearFitting(self):
         
@@ -1177,9 +1212,11 @@ class GUI:
             
             self.validParticles[part].diffusionLinearFitting = popt[0]/4
             
+            self.validParticles[part].r_squaredLinearFitting = calculate_rsquared(timeD[:self.nbPoints],MSD[:self.nbPoints],popt,linearZero)
+            
             plt.plot(timeD[:self.nbPoints],MSD[:self.nbPoints])
             
-            label = "Fitting equation: MSD = $4D_{t}t$\n$D_t$ = %.4f $\mu$m$^2$/s" % (popt[0]/4)
+            label = "Fitting equation: MSD = $4D_{t}t$\n$D_t$ = %.4f $\mu$m$^2$/s\n$R^2$ = %.4f" % (popt[0]/4,self.validParticles[part].r_squaredLinearFitting)
             plt.plot(timeD[:self.nbPoints],linearZero(np.asarray(timeD[:self.nbPoints]),*popt),'--',
                      label = label)
         
@@ -1200,6 +1237,7 @@ class GUI:
                 textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
                 textfile.write("Fitting equation,MSD = 4D*t\n")
                 textfile.write("D (um^2/s),%.6f\n" % (self.validParticles[p].diffusionLinearFitting))
+                textfile.write("\nR^2,%.6f\n" % (self.validParticles[p].r_squaredLinearFitting))
         
         #Save summary data
         with open(str(directorySave/'MSD_linearFitting_Summary.csv'), 'w') as textfile:
@@ -1211,48 +1249,48 @@ class GUI:
                 Dlist.append(self.validParticles[p].diffusionLinearFitting)
             textfile.write('\n')
             textfile.write('\n')
-            textfile.write('Average diffusion,%.6f\n' % (np.nanmean(Dlist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(Dlist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(Dlist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(Dlist)))))
+            textfile.write('Average diffusion,%.6f\n' % (np.mean(Dlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(Dlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(Dlist,ddof=1)/np.sqrt(len(Dlist))))
 
-
-    def doLinearFittingMSADAverage(self):
-        #The doAverageMSAD function should have been run first
-        #so that the averageMSAD variable exists
+    def doLinearFittingAverage(self):
+        #The doAverageMSD function should have been run first
+        #so that the averageMSD variable exists
         
         #Creates the folder if it's the first time
-        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSAD'))):
-            os.mkdir(str(self.dn / Path('Plots/FittingsMSAD')))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
         
-        directorySave = self.dn / Path('Plots/FittingsMSAD')        
+        directorySave = self.dn / Path('Plots/FittingsMSD')          
 
         #Plot MSD  fitting info
         fig0 = plt.figure(0,figsize=(12, 10))
                 
-        popt, pcov = curve_fit(linearZero, self.averageTimeD[:self.nbPoints], self.averageMSAD[:self.nbPoints])  
+        popt, pcov = curve_fit(linearZero, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
         
-        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSAD[:self.nbPoints])
+        r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints],popt,linearZero)
+
+        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
         
-        label = "Fitting equation: MSAD = $4D_{r}t$\n$D_r$ = %.4f rad$^2$/s\n$\\tau_r$ = %.4f s" % (popt[0]/4,4/popt[0])
+        label = "Fitting equation: MSD = $4D_{t}t$\n$D_t$ = %.4f $\mu$m$^2$/s\n$R^2$ = %.4f" % (popt[0]/4, r_squared)
         plt.plot(self.averageTimeD[:self.nbPoints],linearZero(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
                  label = label)
     
         plt.xlabel('$\Delta$t (s)')
-        plt.ylabel('MSAD (rad$^2$/s)')
+        plt.ylabel('MSD ($\mu$m$^2$)')
         plt.axis('tight')
         plt.legend()
-        plt.title('MSAD linear fitting for all particles')
+        plt.title('MSD linear fitting for all particles')
         
-        fig0.savefig(str(directorySave/'MSAD_linearFitting_average.png'))
-        fig0.savefig(str(directorySave/'MSAD_linearFitting_average.svg'),format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSD_linearFitting_average.png'))
+        fig0.savefig(str(directorySave/'MSD_linearFitting_average.svg'),format='svg',dpi=1200)
         plt.close()
     
         #Save data
-        with open(str(directorySave/'MSAD_linearFitting_average.csv'), 'w') as textfile:
-            textfile.write("Fitting equation,MSAD = 4Dr*t\n")
-            textfile.write("Dr (rad^2/s),%.6f\n" % (popt[0]/4))
-            textfile.write("tau (s),%.6f\n" % (4/popt[0]))
-
+        with open(str(directorySave/'MSD_linearFitting_average.csv'), 'w') as textfile:
+            textfile.write("Fitting equation,MSD = 4D*t\n")
+            textfile.write("D (um^2/s),%.6f\n" % (popt[0]/4))
+            textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
     def doLinearFittingMSAD(self):
@@ -1280,9 +1318,11 @@ class GUI:
             self.validParticles[part].rotDiffusionLinearFitting = popt[0]/4
             self.validParticles[part].tauLinearFitting = 1/self.validParticles[part].rotDiffusionLinearFitting
             
+            self.validParticles[part].r_squaredRotLinearFitting = calculate_rsquared(timeD[:self.nbPoints],MSAD[:self.nbPoints],popt,linearZero)
+
             plt.plot(timeD[:self.nbPoints],MSAD[:self.nbPoints])
             
-            label = "Fitting equation: MSD = $4D_{r}t$\n$D_t$ = %.4f rad$^2$/s\n$\\tau_r$ = %.4f s" % (popt[0]/4,4/popt[0])
+            label = "Fitting equation: MSD = $4D_{r}t$\n$D_t$ = %.4f rad$^2$/s\n$\\tau_r$ = %.4f s\n$R^2$ = %.4f" % (popt[0]/4,4/popt[0],self.validParticles[part].r_squaredRotLinearFitting)
             plt.plot(timeD[:self.nbPoints],linearZero(np.asarray(timeD[:self.nbPoints]),*popt),'--',
                      label = label)
         
@@ -1304,6 +1344,7 @@ class GUI:
                 textfile.write("Fitting equation,MSD = 4Dr*t\n")
                 textfile.write("Dr (rad^2/s),%.6f\n" % (self.validParticles[p].rotDiffusionLinearFitting))
                 textfile.write("tau (s),%.6f\n" % (self.validParticles[p].tauLinearFitting))
+                textfile.write("\nR^2,%.6f\n" % (self.validParticles[p].r_squaredRotLinearFitting))
 
         #Save summary data
         with open(str(directorySave/('MSAD_linearFitting_Summary.csv')), 'w') as textfile:
@@ -1321,53 +1362,56 @@ class GUI:
                 taulist.append(self.validParticles[p].tauLinearFitting)
             textfile.write('\n')
             textfile.write('\n')
-            textfile.write('Average diffusion,%.6f\n' % (np.nanmean(Dlist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(Dlist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(Dlist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(Dlist)))))
+            textfile.write('Average diffusion,%.6f\n' % (np.mean(Dlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(Dlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(Dlist,ddof=1)/np.sqrt(len(Dlist))))
             textfile.write('\n')
-            textfile.write('Average tau,%.6f\n' % (np.nanmean(taulist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(taulist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.std(taulist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(taulist)))))
+            textfile.write('Average tau,%.6f\n' % (np.mean(taulist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(taulist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(taulist,ddof=1)/np.sqrt(len(taulist))))
 
-
-    def doQuadraticFittingAverage(self):
-        #The doAverageMSD function should have been run first
-        #so that the averageMSD variable exists
+    def doLinearFittingMSADAverage(self):
+        #The doAverageMSAD function should have been run first
+        #so that the averageMSAD variable exists
         
         #Creates the folder if it's the first time
-        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
-            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSAD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSAD')))
         
-        directorySave = self.dn / Path('Plots/FittingsMSD')         
+        directorySave = self.dn / Path('Plots/FittingsMSAD')        
 
         #Plot MSD  fitting info
         fig0 = plt.figure(0,figsize=(12, 10))
                 
-        popt, pcov = curve_fit(quadratic, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
+        popt, pcov = curve_fit(linearZero, self.averageTimeD[:self.nbPoints], self.averageMSAD[:self.nbPoints])  
+                
+        r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSAD[:self.nbPoints],popt,linearZero)
+
+        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSAD[:self.nbPoints])
         
-        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
-        
-        label = "Fitting equation: MSD = $4D_{t}t + v^2t^2$\n$D_t$ = %.4f $\mu$m$^2$/s\n$v$ = %.4f $\mu$m/s\n$v^2$ = %.4f $\mu$m$^2/s^2$" % (popt[0]/4,np.sqrt(popt[1]),popt[1])
-        plt.plot(self.averageTimeD[:self.nbPoints],quadratic(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
+        label = "Fitting equation: MSAD = $4D_{r}t$\n$D_r$ = %.4f rad$^2$/s\n$\\tau_r$ = %.4f s\n$R^2$ = %.4f" % (popt[0]/4,4/popt[0],r_squared)
+        plt.plot(self.averageTimeD[:self.nbPoints],linearZero(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
                  label = label)
     
         plt.xlabel('$\Delta$t (s)')
-        plt.ylabel('MSD ($\mu$m$^2$)')
+        plt.ylabel('MSAD (rad$^2$/s)')
         plt.axis('tight')
         plt.legend()
-        plt.title('MSD quadratic fitting for all particles')
+        plt.title('MSAD linear fitting for all particles')
         
-        fig0.savefig(str(directorySave/('MSD_quadraticFitting_average.png')))
-        fig0.savefig(str(directorySave/('MSD_quadraticFitting_average.svg')),format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSAD_linearFitting_average.png'))
+        fig0.savefig(str(directorySave/'MSAD_linearFitting_average.svg'),format='svg',dpi=1200)
         plt.close()
     
         #Save data
-        with open(str(directorySave/('MSD_quadraticFitting_average.csv')), 'w') as textfile:
-            textfile.write("Fitting equation,MSD = 4D*t + v^2*t^2\n")
-            textfile.write("D (um^2/s),%.6f\n" % (popt[0]/4))
-            textfile.write("v (um/s),%.6f\n" % (np.sqrt(popt[1])))
-            textfile.write("v^2 (um^2/s^2),%.6f\n" % (popt[1]))
-        
+        with open(str(directorySave/'MSAD_linearFitting_average.csv'), 'w') as textfile:
+            textfile.write("Fitting equation,MSAD = 4Dr*t\n")
+            textfile.write("Dr (rad^2/s),%.6f\n" % (popt[0]/4))
+            textfile.write("tau (s),%.6f\n" % (4/popt[0]))
+            textfile.write("\nR^2,%.6f\n" % (r_squared))
+
+
+
 
     def doQuadraticFitting(self):
         
@@ -1395,9 +1439,11 @@ class GUI:
             self.validParticles[part].speedSquaredQuadraticFitting = popt[1]
             self.validParticles[part].diffusionQuadraticFitting = popt[0]/4
             
+            self.validParticles[part].r_squaredQuadraticFitting = calculate_rsquared(timeD[:self.nbPoints],MSD[:self.nbPoints],popt,quadratic)
+
             plt.plot(timeD[:self.nbPoints],MSD[:self.nbPoints])
             
-            label = "Fitting equation: MSD = $4D_{t}t + v^2t^2$\n$D_t$ = %.4f $\mu$m$^2$/s\n$v$ = %.4f $\mu$m/s\n$v^2$ = %.4f $\mu$m$^2/s^2$" % (popt[0]/4,np.sqrt(popt[1]),popt[1])
+            label = "Fitting equation: MSD = $4D_{t}t + v^2t^2$\n$D_t$ = %.4f $\mu$m$^2$/s\n$v$ = %.4f $\mu$m/s\n$v^2$ = %.4f $\mu$m$^2/s^2$\n$R^2$ = %.4f" % (popt[0]/4,np.sqrt(popt[1]),popt[1],self.validParticles[part].r_squaredQuadraticFitting)
             plt.plot(timeD[:self.nbPoints],quadratic(np.asarray(timeD[:self.nbPoints]),*popt),'--',
                      label = label)
         
@@ -1420,6 +1466,7 @@ class GUI:
                 textfile.write("D (um^2/s),%.6f\n" % (self.validParticles[p].diffusionQuadraticFitting))
                 textfile.write("v (um/s),%.6f\n" % (self.validParticles[p].speedQuadraticFitting))
                 textfile.write("v^2 (um^2/s^2),%.6f\n" % (self.validParticles[p].speedSquaredQuadraticFitting))
+                textfile.write("\nR^2,%.6f\n" % (self.validParticles[p].r_squaredQuadraticFitting))
 
         #Save summary data
         with open(str(directorySave/('MSD_quadraticFitting_Summary.csv')), 'w') as textfile:
@@ -1443,57 +1490,58 @@ class GUI:
                 vsquarelist.append(self.validParticles[p].speedSquaredQuadraticFitting)
             textfile.write('\n')
             textfile.write('\n')
-            textfile.write('Average diffusion,%.6f\n' % (np.nanmean(Dlist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(Dlist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(Dlist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(Dlist)))))
+            textfile.write('Average diffusion,%.6f\n' % (np.mean(Dlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(Dlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(Dlist,ddof=1)/np.sqrt(len(Dlist))))
             textfile.write('\n')
-            textfile.write('Average speed,%.6f\n' % (np.nanmean(vlist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(vlist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(vlist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(vlist)))))
+            textfile.write('Average speed,%.6f\n' % (np.mean(vlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(vlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(vlist,ddof=1)/np.sqrt(len(vlist))))
             textfile.write('\n')
-            textfile.write('Average speed squared,%.6f\n' % (np.nanmean(vsquarelist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(vsquarelist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(vsquarelist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(vsquarelist)))))
+            textfile.write('Average speed squared,%.6f\n' % (np.mean(vsquarelist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(vsquarelist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(vsquarelist,ddof=1)/np.sqrt(len(vsquarelist))))
 
-
-    def doQuadraticFittingMSADAverage(self):
-        #The doAverageMASD function should have been run first
-        #so that the averageMASD variable exists
+    def doQuadraticFittingAverage(self):
+        #The doAverageMSD function should have been run first
+        #so that the averageMSD variable exists
         
         #Creates the folder if it's the first time
-        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSAD'))):
-            os.mkdir(str(self.dn / Path('Plots/FittingsMSAD')))
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
         
-        directorySave = self.dn / Path('Plots/FittingsMSAD')         
+        directorySave = self.dn / Path('Plots/FittingsMSD')         
 
-        #Plot MASD  fitting info
+        #Plot MSD  fitting info
         fig0 = plt.figure(0,figsize=(12, 10))
                 
-        popt, pcov = curve_fit(quadratic, self.averageTimeD[:self.nbPoints], self.averageMSAD[:self.nbPoints])  
+        popt, pcov = curve_fit(quadratic, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
         
-        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSAD[:self.nbPoints])
+        r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints],popt,quadratic)
+
+        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
         
-        label = "Fitting equation: MSAD = $4D_{r}t + \omega^2t^2$\n$D_r$ = %.4f rad$^2$/s\n$\omega$ = %.4f rad/s\n$\\tau_r$ = %.4f s" % (popt[0]/4,np.sqrt(popt[1]),4/popt[0])
+        label = "Fitting equation: MSD = $4D_{t}t + v^2t^2$\n$D_t$ = %.4f $\mu$m$^2$/s\n$v$ = %.4f $\mu$m/s\n$v^2$ = %.4f $\mu$m$^2/s^2$\n$R^2$ = %.4f" % (popt[0]/4,np.sqrt(popt[1]),popt[1], r_squared)
         plt.plot(self.averageTimeD[:self.nbPoints],quadratic(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
                  label = label)
     
         plt.xlabel('$\Delta$t (s)')
-        plt.ylabel('MSAD (rad$^2$)')
+        plt.ylabel('MSD ($\mu$m$^2$)')
         plt.axis('tight')
         plt.legend()
-        plt.title('MSAD quadratic fitting for all particles')
+        plt.title('MSD quadratic fitting for all particles')
         
-        fig0.savefig(str(directorySave/('MSAD_quadraticFitting_average.png')))
-        fig0.savefig(str(directorySave/('MSAD_quadraticFitting_average.svg')),format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/('MSD_quadraticFitting_average.png')))
+        fig0.savefig(str(directorySave/('MSD_quadraticFitting_average.svg')),format='svg',dpi=1200)
         plt.close()
     
         #Save data
-        with open(str(directorySave/('MSAD_quadraticFitting_average.csv')), 'w') as textfile:
-            textfile.write("Fitting equation,MSAD = 4Dr*t + w^2*t^2\n")
-            textfile.write("Dr (rad^2/s),%.6f\n" % (popt[0]/4))
-            textfile.write("w^2 (rad^2/s^2),%.6f\n" % (popt[1]))            
-            textfile.write("w (rad/s),%.6f\n" % (np.sqrt(popt[1])))
-            textfile.write("tau (s),%.6f\n" % (4/popt[0]))
+        with open(str(directorySave/('MSD_quadraticFitting_average.csv')), 'w') as textfile:
+            textfile.write("Fitting equation,MSD = 4D*t + v^2*t^2\n")
+            textfile.write("D (um^2/s),%.6f\n" % (popt[0]/4))
+            textfile.write("v (um/s),%.6f\n" % (np.sqrt(popt[1])))
+            textfile.write("v^2 (um^2/s^2),%.6f\n" % (popt[1]))
+            textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
     def doQuadraticFittingMSAD(self):
@@ -1523,10 +1571,11 @@ class GUI:
             self.validParticles[part].rotDiffusionQuadraticFitting = popt[0]/4
             self.validParticles[part].tauQuadraticFitting = 1/self.validParticles[part].rotDiffusionQuadraticFitting
             
-            
+            self.validParticles[part].r_squaredRotQuadraticFitting = calculate_rsquared(timeD[:self.nbPoints],MSAD[:self.nbPoints],popt,quadratic)
+
             plt.plot(timeD[:self.nbPoints],MSAD[:self.nbPoints])
             
-            label = "Fitting equation: MSAD = $4D_{r}t + \omega^2t^2$\n$D_r$ = %.4f rad$^2$/s\n$\omega$ = %.4f rad/s\n$\\tau_r$ = %.4f s" % (popt[0]/4,np.sqrt(popt[1]),4/popt[0])
+            label = "Fitting equation: MSAD = $4D_{r}t + \omega^2t^2$\n$D_r$ = %.4f rad$^2$/s\n$\omega$ = %.4f rad/s\n$\\tau_r$ = %.4f s\n$R^2$ = %.4f" % (popt[0]/4,np.sqrt(popt[1]),4/popt[0],self.validParticles[part].r_squaredRotQuadraticFitting)
             plt.plot(timeD[:self.nbPoints],quadratic(np.asarray(timeD[:self.nbPoints]),*popt),'--',
                      label = label)
         
@@ -1549,6 +1598,7 @@ class GUI:
                 textfile.write("Dr (um^2/s),%.6f\n" % (self.validParticles[p].rotDiffusionQuadraticFitting))
                 textfile.write("w (um/s),%.6f\n" % (self.validParticles[p].rotSpeedQuadraticFitting))
                 textfile.write("tau (s),%.6f\n" % (self.validParticles[p].tauQuadraticFitting))
+                textfile.write("\nR^2,%.6f\n" % (self.validParticles[p].r_squaredRotQuadraticFitting))
 
         #Save summary data
         with open(str(directorySave/'MSAD_quadraticFitting_Summary.csv'), 'w') as textfile:
@@ -1578,25 +1628,177 @@ class GUI:
                 taulist.append(self.validParticles[p].tauQuadraticFitting)
             textfile.write('\n')
             textfile.write('\n')
-            textfile.write('Average diffusion,%.6f\n' % (np.nanmean(Dlist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(Dlist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(Dlist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(Dlist)))))
+            textfile.write('Average diffusion,%.6f\n' % (np.mean(Dlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(Dlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(Dlist,ddof=1)/np.sqrt(len(Dlist))))
             textfile.write('\n')
-            textfile.write('Average rotational squared speed,%.6f\n' % (np.nanmean(wsquarelist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(wsquarelist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(wsquarelist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(wsquarelist)))))
+            textfile.write('Average rotational squared speed,%.6f\n' % (np.mean(wsquarelist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(wsquarelist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(wsquarelist,ddof=1)/np.sqrt(len(wsquarelist))))
             textfile.write('\n')
-            textfile.write('Average rotational speed,%.6f\n' % (np.nanmean(wlist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(wlist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(wlist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(wlist)))))
+            textfile.write('Average rotational speed,%.6f\n' % (np.mean(wlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(wlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(wlist,ddof=1)/np.sqrt(len(wlist))))
             textfile.write('\n')
-            textfile.write('Average tau,%.6f\n' % (np.nanmean(taulist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(taulist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(taulist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(taulist)))))
+            textfile.write('Average tau,%.6f\n' % (np.mean(taulist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(taulist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(taulist,ddof=1)/np.sqrt(len(taulist))))
+
+    def doQuadraticFittingMSADAverage(self):
+        #The doAverageMASD function should have been run first
+        #so that the averageMASD variable exists
+        
+        #Creates the folder if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSAD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSAD')))
+        
+        directorySave = self.dn / Path('Plots/FittingsMSAD')         
+
+        #Plot MASD  fitting info
+        fig0 = plt.figure(0,figsize=(12, 10))
+                
+        popt, pcov = curve_fit(quadratic, self.averageTimeD[:self.nbPoints], self.averageMSAD[:self.nbPoints])  
+                
+        r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSAD[:self.nbPoints],popt,quadratic)
+
+        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSAD[:self.nbPoints])
+        
+        label = "Fitting equation: MSAD = $4D_{r}t + \omega^2t^2$\n$D_r$ = %.4f rad$^2$/s\n$\omega$ = %.4f rad/s\n$\\tau_r$ = %.4f s\n$R^2$ = %.4f" % (popt[0]/4,np.sqrt(popt[1]),4/popt[0],r_squared)
+        plt.plot(self.averageTimeD[:self.nbPoints],quadratic(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
+                 label = label)
+    
+        plt.xlabel('$\Delta$t (s)')
+        plt.ylabel('MSAD (rad$^2$)')
+        plt.axis('tight')
+        plt.legend()
+        plt.title('MSAD quadratic fitting for all particles')
+        
+        fig0.savefig(str(directorySave/('MSAD_quadraticFitting_average.png')))
+        fig0.savefig(str(directorySave/('MSAD_quadraticFitting_average.svg')),format='svg',dpi=1200)
+        plt.close()
+    
+        #Save data
+        with open(str(directorySave/('MSAD_quadraticFitting_average.csv')), 'w') as textfile:
+            textfile.write("Fitting equation,MSAD = 4Dr*t + w^2*t^2\n")
+            textfile.write("Dr (rad^2/s),%.6f\n" % (popt[0]/4))
+            textfile.write("w^2 (rad^2/s^2),%.6f\n" % (popt[1]))            
+            textfile.write("w (rad/s),%.6f\n" % (np.sqrt(popt[1])))
+            textfile.write("tau (s),%.6f\n" % (4/popt[0]))
+            textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
 
-    def doAlphaFittingAverage(self):
+
+
+    def doCubicFitting(self):
+        
+        #Creates the folder fittings if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
+            
+        #Creates the folder for alpha fitting if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD/Cubic'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD/Cubic')))
+        
+        directorySave = self.dn / Path('Plots/FittingsMSD/Cubic')
+        
+        #Plot MSD with fitting info
+        for part in range(self.nbParticles):
+            
+            fig0 = plt.figure(0,figsize=(12, 10))
+        
+            timeD = self.validParticles[part].timeD
+            MSD = self.validParticles[part].MSD
+            
+            popt, pcov = curve_fit(cubic, timeD[:self.nbPoints], MSD[:self.nbPoints])  
+            
+            
+            self.validParticles[part].speedCubicFitting = np.sqrt(popt[1])
+            self.validParticles[part].speedSquaredCubicFitting = popt[1]
+            self.validParticles[part].tauCubicFitting = -self.validParticles[part].speedSquaredCubicFitting/(3*popt[2])
+            self.validParticles[part].diffusionCubicFitting = popt[0]/4
+                        
+            self.validParticles[part].r_squaredCubicFitting = calculate_rsquared(timeD[:self.nbPoints],MSD[:self.nbPoints],popt,cubic)
+
+            plt.plot(timeD[:self.nbPoints],MSD[:self.nbPoints])
+            
+            label = "Fitting equation: MSD = $4D_{t}t + v^2t^2 - \\frac{v^2}{3\\tau_{r}}t^3$"
+            label += "\n$D_t$ = %.4f $\mu$m$^2$/s" % (self.validParticles[part].diffusionCubicFitting)
+            label += "\n$v$ = %.4f $\mu$m/s" % (self.validParticles[part].speedCubicFitting)
+            label += "\n$v^2$ = %.4f $\mu$m$^2/s^2$" % (self.validParticles[part].speedSquaredCubicFitting)
+            label += "\n$\\tau_{r}$ = %.4f $s$" % (self.validParticles[part].tauCubicFitting)
+            label += "\n$R^2$ = %.4f" % (self.validParticles[part].r_squaredCubicFitting)
+            
+            plt.plot(timeD[:self.nbPoints],cubic(np.asarray(timeD[:self.nbPoints]),*popt),'--',
+                     label = label)
+        
+            plt.xlabel('$\Delta$t (s)')
+            plt.ylabel('MSD ($\mu$m$^2$)')
+            plt.axis('tight')
+            plt.legend()
+            plt.title('MSD cubic fitting for particle ' + str(part))
+            
+            fig0.savefig(str(directorySave/('MSD_cubicFitting_P'+str(part)+'.png')))
+            fig0.savefig(str(directorySave/('MSD_cubicFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
+            plt.close()
+
+        #Save data
+        for p in range(self.nbParticles):
+            with open(str(directorySave/('MSD_cubicFitting_P'+str(p)+'.csv')), 'w') as textfile:
+                textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
+                textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
+                textfile.write("Fitting equation,MSD = 4D*t + v^2*t^2 + -(v^2/3*tau)*t^3\n")
+                textfile.write("D (um^2/s),%.6f\n" % (self.validParticles[p].diffusionCubicFitting))
+                textfile.write("v (um/s),%.6f\n" % (self.validParticles[p].speedCubicFitting))
+                textfile.write("v^2 (um^2/s^2),%.6f\n" % (self.validParticles[p].speedSquaredCubicFitting))
+                textfile.write("tau (s),%.6f\n" % (self.validParticles[p].tauCubicFitting))
+                textfile.write("\nR^2,%.6f\n" % (self.validParticles[p].r_squaredCubicFitting))
+
+        #Save summary data
+        with open(str(directorySave/('MSD_cubicFitting_Summary.csv')), 'w') as textfile:
+            Dlist = list()
+            vlist = list()
+            vsquarelist = list()
+            taulist = list()
+            textfile.write("Fitting equation,MSD = 4D*t + v^2*t^2 + -(v^2/3*tau)*t^3\n")
+            textfile.write('D (um^2/s),')
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].diffusionCubicFitting))
+                Dlist.append(self.validParticles[p].diffusionCubicFitting)
+            textfile.write('\n')
+            textfile.write("v (um/s),")
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].speedCubicFitting))
+                vlist.append(self.validParticles[p].speedCubicFitting)
+            textfile.write('\n')
+            textfile.write("v^2 (um^2/s^2),")
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].speedSquaredCubicFitting))
+                vsquarelist.append(self.validParticles[p].speedSquaredCubicFitting)
+            textfile.write('\n')
+            textfile.write("tau (s),")
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].tauCubicFitting))
+                taulist.append(self.validParticles[p].tauCubicFitting)
+            textfile.write('\n')
+            textfile.write('\n')
+            textfile.write('Average diffusion,%.6f\n' % (np.mean(Dlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(Dlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(Dlist,ddof=1)/np.sqrt(len(Dlist))))
+            textfile.write('\n')
+            textfile.write('Average speed,%.6f\n' % (np.mean(vlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(vlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(vlist,ddof=1)/np.sqrt(len(vlist))))
+            textfile.write('\n')
+            textfile.write('Average speed squared,%.6f\n' % (np.mean(vsquarelist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(vsquarelist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(vsquarelist,ddof=1)/np.sqrt(len(vsquarelist))))
+            textfile.write('\n')
+            textfile.write('Average rotational time,%.6f\n' % (np.mean(taulist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(taulist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(taulist,ddof=1)/np.sqrt(len(taulist))))
+
+    def doCubicFittingAverage(self):
         #The doAverageMSD function should have been run first
         #so that the averageMSD variable exists
         
@@ -1606,34 +1808,360 @@ class GUI:
         
         directorySave = self.dn / Path('Plots/FittingsMSD')         
 
-        #Plot MSD in log-log with fitting info
+        #Plot MSD  fitting info
         fig0 = plt.figure(0,figsize=(12, 10))
                 
-        popt, pcov = curve_fit(linear, np.log(self.averageTimeD[:self.nbPoints]), np.log(self.averageMSD[:self.nbPoints]))  
+        popt, pcov = curve_fit(cubic, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
         
+        r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints],popt,cubic)
+
         plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
         
-        label = "Fitting equation: MSD = $Dt^{\\alpha}$\n$\\alpha$ = %.2f\n$D$ = %.6f" % (popt[1],np.exp(popt[0]))
-        plt.plot(self.averageTimeD[:self.nbPoints],powerLaw(np.asarray(self.averageTimeD[:self.nbPoints]),np.exp(popt[0]),popt[1]),'--',
+        label = "Fitting equation: MSD = $4D_{t}t + v^2t^2 - \\frac{v^2}{3\\tau_{r}}t^3$"
+        label += "\n$D_t$ = %.4f $\mu$m$^2$/s" % (popt[0]/4)
+        label += "\n$v$ = %.4f $\mu$m/s" % (np.sqrt(popt[1]))
+        label += "\n$v^2$ = %.4f $\mu$m$^2/s^2$" % (popt[1])
+        label += "\n$\\tau_{r}$ = %.4f $s$" % (-popt[1]/(3*popt[2]))
+        label += "\n$R^2$ = %.4f" % (r_squared)
+
+        plt.plot(self.averageTimeD[:self.nbPoints],cubic(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
                  label = label)
     
         plt.xlabel('$\Delta$t (s)')
         plt.ylabel('MSD ($\mu$m$^2$)')
-        plt.yscale('log')
-        plt.xscale('log')
         plt.axis('tight')
         plt.legend()
-        plt.title('MSD exponent for all particles')
+        plt.title('MSD cubic fitting for all particles')
         
-        fig0.savefig(str(directorySave/'MSD_logFitting_average.png'))
-        fig0.savefig(str(directorySave/'MSD_logFitting_average.svg'),format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/('MSD_cubicFitting_average.png')))
+        fig0.savefig(str(directorySave/('MSD_cubicFitting_average.svg')),format='svg',dpi=1200)
         plt.close()
+    
+        #Save data
+        with open(str(directorySave/('MSD_cubicFitting_average.csv')), 'w') as textfile:
+            textfile.write("Fitting equation,MSD = 4D*t + v^2*t^2 + -(v^2/3*tau)*t^3\n")
+            textfile.write("D (um^2/s),%.6f\n" % (popt[0]/4))
+            textfile.write("v (um/s),%.6f\n" % (np.sqrt(popt[1])))
+            textfile.write("v^2 (um^2/s^2),%.6f\n" % (popt[1]))
+            textfile.write("tau (s),%.6f\n" % (-popt[1]/(3*popt[2])))
+            textfile.write("\nR^2,%.6f\n" % (r_squared))
+
+
+
+    def doFourthOrderFitting(self):
+        
+        #Creates the folder fittings if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
+            
+        #Creates the folder for alpha fitting if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD/Fourth order'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD/Fourth order')))
+        
+        directorySave = self.dn / Path('Plots/FittingsMSD/Fourth order')
+        
+        #Plot MSD with fitting info
+        for part in range(self.nbParticles):
+            
+            fig0 = plt.figure(0,figsize=(12, 10))
+        
+            timeD = self.validParticles[part].timeD
+            MSD = self.validParticles[part].MSD
+            
+            popt, pcov = curve_fit(fourthOrder, timeD[:self.nbPoints], MSD[:self.nbPoints])  
+            
+            
+            self.validParticles[part].speedFourthOrderFitting = np.sqrt(popt[1])
+            self.validParticles[part].speedSquaredFourthOrderFitting = popt[1]
+            self.validParticles[part].tauFourthOrderFitting = -self.validParticles[part].speedSquaredFourthOrderFitting/(3*popt[2])
+            self.validParticles[part].diffusionFourthOrderFitting = popt[0]/4
+            
+            self.validParticles[part].r_squaredFourthOrderFitting = calculate_rsquared(timeD[:self.nbPoints],MSD[:self.nbPoints],popt,fourthOrder)
+
+            plt.plot(timeD[:self.nbPoints],MSD[:self.nbPoints])
+            
+            label = "Fitting equation: MSD = $4D_{t}t + v^2t^2 - \\frac{v^2}{3\\tau_{r}}t^3 + \\frac{v^2}{12\\tau_{r}^2}t^4$"
+            label += "\n$D_t$ = %.4f $\mu$m$^2$/s" % (self.validParticles[part].diffusionFourthOrderFitting)
+            label += "\n$v$ = %.4f $\mu$m/s" % (self.validParticles[part].speedFourthOrderFitting)
+            label += "\n$v^2$ = %.4f $\mu$m$^2/s^2$" % (self.validParticles[part].speedSquaredFourthOrderFitting)
+            label += "\n$\\tau_{r}$ = %.4f $s$" % (self.validParticles[part].tauFourthOrderFitting)
+            label += "\n$R^2$ = %.4f" % (self.validParticles[part].r_squaredFourthOrderFitting)
+
+            
+            plt.plot(timeD[:self.nbPoints],fourthOrder(np.asarray(timeD[:self.nbPoints]),*popt),'--',
+                     label = label)
+        
+            plt.xlabel('$\Delta$t (s)')
+            plt.ylabel('MSD ($\mu$m$^2$)')
+            plt.axis('tight')
+            plt.legend()
+            plt.title('MSD fourth order fitting for particle ' + str(part))
+            
+            fig0.savefig(str(directorySave/('MSD_fourthOrderFitting_P'+str(part)+'.png')))
+            fig0.savefig(str(directorySave/('MSD_fourthOrderFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
+            plt.close()
 
         #Save data
-        with open(str(directorySave/'MSD_logFitting_average.csv'), 'w') as textfile:
-            textfile.write("Fitting equation,MSD = D*t^alpha\n")
-            textfile.write("D (um^2/s^alpha),%.6f\n" % (popt[1]))
-            textfile.write("Alpha,%.6f\n" % (np.exp(popt[0])))        
+        for p in range(self.nbParticles):
+            with open(str(directorySave/('MSD_fourthOrderFitting_P'+str(p)+'.csv')), 'w') as textfile:
+                textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
+                textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
+                textfile.write("Fitting equation,MSD = 4D*t + v^2*t^2 + -(v^2/3*tau)*t^3 + (v^2/12*tau^2)*t^4\n")
+                textfile.write("D (um^2/s),%.6f\n" % (self.validParticles[p].diffusionFourthOrderFitting))
+                textfile.write("v (um/s),%.6f\n" % (self.validParticles[p].speedFourthOrderFitting))
+                textfile.write("v^2 (um^2/s^2),%.6f\n" % (self.validParticles[p].speedSquaredFourthOrderFitting))
+                textfile.write("tau (s),%.6f\n" % (self.validParticles[p].tauFourthOrderFitting))
+                textfile.write("\nR^2,%.6f\n" % (self.validParticles[p].r_squaredFourthOrderFitting))
+
+        #Save summary data
+        with open(str(directorySave/('MSD_fourthOrderFitting_Summary.csv')), 'w') as textfile:
+            Dlist = list()
+            vlist = list()
+            vsquarelist = list()
+            taulist = list()
+            textfile.write("Fitting equation,MSD = 4D*t + v^2*t^2 + -(v^2/3*tau)*t^3 + (v^2/12*tau^2)*t^4\n")
+            textfile.write('D (um^2/s),')
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].diffusionFourthOrderFitting))
+                Dlist.append(self.validParticles[p].diffusionFourthOrderFitting)
+            textfile.write('\n')
+            textfile.write("v (um/s),")
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].speedFourthOrderFitting))
+                vlist.append(self.validParticles[p].speedFourthOrderFitting)
+            textfile.write('\n')
+            textfile.write("v^2 (um^2/s^2),")
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].speedSquaredFourthOrderFitting))
+                vsquarelist.append(self.validParticles[p].speedSquaredFourthOrderFitting)
+            textfile.write('\n')
+            textfile.write("tau (s),")
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].tauFourthOrderFitting))
+                taulist.append(self.validParticles[p].tauFourthOrderFitting)
+            textfile.write('\n')
+            textfile.write('\n')
+            textfile.write('Average diffusion,%.6f\n' % (np.mean(Dlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(Dlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(Dlist,ddof=1)/np.sqrt(len(Dlist))))
+            textfile.write('\n')
+            textfile.write('Average speed,%.6f\n' % (np.mean(vlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(vlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(vlist,ddof=1)/np.sqrt(len(vlist))))
+            textfile.write('\n')
+            textfile.write('Average speed squared,%.6f\n' % (np.mean(vsquarelist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(vsquarelist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(vsquarelist,ddof=1)/np.sqrt(len(vsquarelist))))
+            textfile.write('\n')
+            textfile.write('Average rotational time,%.6f\n' % (np.mean(taulist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(taulist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(taulist,ddof=1)/np.sqrt(len(taulist))))
+
+    def doFourthOrderFittingAverage(self):
+        #The doAverageMSD function should have been run first
+        #so that the averageMSD variable exists
+        
+        #Creates the folder if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
+        
+        directorySave = self.dn / Path('Plots/FittingsMSD')         
+
+        #Plot MSD  fitting info
+        fig0 = plt.figure(0,figsize=(12, 10))
+                
+        popt, pcov = curve_fit(fourthOrder, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
+        
+        r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints],popt,fourthOrder)
+
+        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
+        
+        label = "Fitting equation: MSD = $4D_{t}t + v^2t^2 - \\frac{v^2}{3\\tau_{r}}t^3 + \\frac{v^2}{12\\tau_{r}^2}t^4$"
+        label += "\n$D_t$ = %.4f $\mu$m$^2$/s" % (popt[0]/4)
+        label += "\n$v$ = %.4f $\mu$m/s" % (np.sqrt(popt[1]))
+        label += "\n$v^2$ = %.4f $\mu$m$^2/s^2$" % (popt[1])
+        label += "\n$\\tau_{r}$ = %.4f $s$" % (-popt[1]/(3*popt[2]))
+        label += "\n$R^2$ = %.4f" % (r_squared)
+
+        plt.plot(self.averageTimeD[:self.nbPoints],fourthOrder(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
+                 label = label)
+    
+        plt.xlabel('$\Delta$t (s)')
+        plt.ylabel('MSD ($\mu$m$^2$)')
+        plt.axis('tight')
+        plt.legend()
+        plt.title('MSD fourth order fitting for all particles')
+        
+        fig0.savefig(str(directorySave/('MSD_fourthOrderFitting_average.png')))
+        fig0.savefig(str(directorySave/('MSD_fourthOrderFitting_average.svg')),format='svg',dpi=1200)
+        plt.close()
+    
+        #Save data
+        with open(str(directorySave/('MSD_fourthOrderFitting_average.csv')), 'w') as textfile:
+            textfile.write("Fitting equation,MSD = 4D*t + v^2*t^2 + -(v^2/3*tau)*t^3 + (v^2/12*tau^2)*t^4\n")
+            textfile.write("D (um^2/s),%.6f\n" % (popt[0]/4))
+            textfile.write("v (um/s),%.6f\n" % (np.sqrt(popt[1])))
+            textfile.write("v^2 (um^2/s^2),%.6f\n" % (popt[1]))
+            textfile.write("tau (s),%.6f\n" % (-popt[1]/(3*popt[2])))
+            textfile.write("\nR^2,%.6f\n" % (r_squared))
+
+
+
+
+    def doFullEquationFitting(self):
+        
+        #Creates the folder fittings if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
+            
+        #Creates the folder for alpha fitting if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD/Full equation'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD/Full equation')))
+        
+        directorySave = self.dn / Path('Plots/FittingsMSD/Full equation')
+        
+        #Plot MSD with fitting info
+        for part in range(self.nbParticles):
+            
+            fig0 = plt.figure(0,figsize=(12, 10))
+        
+            timeD = self.validParticles[part].timeD
+            MSD = self.validParticles[part].MSD
+            
+            try:
+                popt, pcov = curve_fit(fullEquation, timeD[:self.nbPoints], MSD[:self.nbPoints])  
+            except:
+                print('Full equation fitting failed.')
+                popt = [np.nan]*4
+            
+            self.validParticles[part].speedFullEquationFitting = popt[0]
+            self.validParticles[part].tauFullEquationFitting = popt[1]
+            self.validParticles[part].diffusionFullEquationFitting = popt[2]
+            
+            self.validParticles[part].r_squaredFullEquationFitting = calculate_rsquared(timeD[:self.nbPoints],MSD[:self.nbPoints],popt,fullEquation)
+
+            plt.plot(timeD[:self.nbPoints],MSD[:self.nbPoints])
+            
+            label = "Fitting equation: MSD = $4D_{t}t + 2v^2\\tau_{r}^2 (\\frac{t}{\\tau_{r}} + \\exp(-t/\\tau_{r}) - 1)$"
+            label += "\n$D_t$ = %.4f $\mu$m$^2$/s" % (self.validParticles[part].diffusionFullEquationFitting)
+            label += "\n$v$ = %.4f $\mu$m/s" % (self.validParticles[part].speedFullEquationFitting)
+            label += "\n$\\tau_{r}$ = %.4f $s$" % (self.validParticles[part].tauFullEquationFitting)
+            label += "\n$R^2$ = %.4f" % (self.validParticles[part].r_squaredFullEquationFitting)
+
+          
+            plt.plot(timeD[:self.nbPoints],fullEquation(np.asarray(timeD[:self.nbPoints]),*popt),'--',
+                     label = label)
+        
+            plt.xlabel('$\Delta$t (s)')
+            plt.ylabel('MSD ($\mu$m$^2$)')
+            plt.axis('tight')
+            plt.legend()
+            plt.title('MSD full equation fitting for particle ' + str(part))
+            
+            fig0.savefig(str(directorySave/('MSD_fullEquationFitting_P'+str(part)+'.png')))
+            fig0.savefig(str(directorySave/('MSD_fullEquationFitting_P'+str(part)+'.svg')),format='svg',dpi=1200)
+            plt.close()
+
+        #Save data
+        for p in range(self.nbParticles):
+            with open(str(directorySave/('MSD_fullEquationFitting_P'+str(p)+'.csv')), 'w') as textfile:
+                textfile.write('File,'+str(self.validParticles[p].fileName)+'\n')
+                textfile.write('Particle label,'+str(self.validParticles[p].particleLabel)+'\n')
+                textfile.write("Fitting equation,MSD = 4D*t + 2(v^2)*(tau^2)*(t/tau + exp(-t/tau) - 1)\n")
+                textfile.write("D (um^2/s),%.6f\n" % (self.validParticles[p].diffusionFullEquationFitting))
+                textfile.write("v (um/s),%.6f\n" % (self.validParticles[p].speedFullEquationFitting))
+                textfile.write("tau (s),%.6f\n" % (self.validParticles[p].tauFullEquationFitting))
+                textfile.write("\nR^2,%.6f\n" % (self.validParticles[p].r_squaredFullEquationFitting))
+
+        #Save summary data
+        with open(str(directorySave/('MSD_fullEquationFitting_Summary.csv')), 'w') as textfile:
+            Dlist = list()
+            vlist = list()
+            taulist = list()
+            textfile.write("Fitting equation,MSD = 4D*t + 2(v^2)*(tau^2)*(t/tau + exp(-t/tau) - 1)\n")
+            textfile.write('D (um^2/s),')
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].diffusionFullEquationFitting))
+                Dlist.append(self.validParticles[p].diffusionFullEquationFitting)
+            textfile.write('\n')
+            textfile.write("v (um/s),")
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].speedFullEquationFitting))
+                vlist.append(self.validParticles[p].speedFullEquationFitting)
+            textfile.write('\n')
+            textfile.write("tau (s),")
+            for p in range(self.nbParticles):
+                textfile.write("%.6f," % (self.validParticles[p].tauFullEquationFitting))
+                taulist.append(self.validParticles[p].tauFullEquationFitting)
+            textfile.write('\n')
+            textfile.write('\n')
+            textfile.write('Average diffusion,%.6f\n' % (np.mean(Dlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(Dlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(Dlist,ddof=1)/np.sqrt(len(Dlist))))
+            textfile.write('\n')
+            textfile.write('Average speed,%.6f\n' % (np.mean(vlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(vlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(vlist,ddof=1)/np.sqrt(len(vlist))))
+            textfile.write('\n')
+            textfile.write('Average rotational time,%.6f\n' % (np.mean(taulist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(taulist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(taulist,ddof=1)/np.sqrt(len(taulist))))
+
+    def doFullEquationFittingAverage(self):
+        #The doAverageMSD function should have been run first
+        #so that the averageMSD variable exists
+        
+        #Creates the folder if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
+        
+        directorySave = self.dn / Path('Plots/FittingsMSD')         
+
+        #Plot MSD  fitting info
+        fig0 = plt.figure(0,figsize=(12, 10))
+                
+        try:
+            popt, pcov = curve_fit(fullEquation, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
+        except:
+            print('Full equation fitting failed.')
+            popt = [np.nan]*4
+        
+        r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints],popt,fullEquation)
+
+        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
+        
+        label = "Fitting equation: MSD = $4D_{t}t + 2v^2\\tau_{r}^2 (\\frac{t}{\\tau_{r}} + \\exp(-t/\\tau_{r}) - 1)$"
+        label += "\n$D_t$ = %.4f $\mu$m$^2$/s" % (popt[2])
+        label += "\n$v$ = %.4f $\mu$m/s" % (popt[0])
+        label += "\n$\\tau_{r}$ = %.4f $s$" % (popt[1])
+        label += "\n$R^2$ = %.4f" % (r_squared)
+
+        plt.plot(self.averageTimeD[:self.nbPoints],fullEquation(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
+                 label = label)
+    
+        plt.xlabel('$\Delta$t (s)')
+        plt.ylabel('MSD ($\mu$m$^2$)')
+        plt.axis('tight')
+        plt.legend()
+        plt.title('MSD full equation fitting for all particles')
+        
+        fig0.savefig(str(directorySave/('MSD_fullEquationFitting_average.png')))
+        fig0.savefig(str(directorySave/('MSD_fullEquationFitting_average.svg')),format='svg',dpi=1200)
+        plt.close()
+    
+        #Save data
+        with open(str(directorySave/('MSD_fullEquationFitting_average.csv')), 'w') as textfile:
+            textfile.write("Fitting equation,MSD = 4D*t + 2(v^2)*(tau^2)*(t/tau + exp(-t/tau) - 1)\n")
+            textfile.write("D (um^2/s),%.6f\n" % (popt[2]))
+            textfile.write("v (um/s),%.6f\n" % (popt[0]))
+            textfile.write("tau (s),%.6f\n" % (popt[1]))
+            textfile.write("\nR^2,%.6f\n" % (r_squared))
+
+
+
+
+
+
 
     def doAlphaFitting(self):
         
@@ -1661,9 +2189,11 @@ class GUI:
             self.validParticles[part].alphaFitting = popt[1]
             self.validParticles[part].diffusionAlphaFitting = np.exp(popt[0])
             
+            self.validParticles[part].r_squaredAlphaFitting = calculate_rsquared(np.log(timeD[:self.nbPoints]),np.log(MSD[:self.nbPoints]),popt,linear)
+
             plt.plot(timeD[:self.nbPoints],MSD[:self.nbPoints])
             
-            label = "Fitting equation: MSD = $Dt^{\\alpha}$\n$\\alpha$ = %.2f\n$D$ = %.6f" % (popt[1],np.exp(popt[0]))
+            label = "Fitting equation: MSD = $Dt^{\\alpha}$\n$\\alpha$ = %.2f\n$D$ = %.6f\n$R^2$ = %.4f" % (popt[1],np.exp(popt[0]),self.validParticles[part].r_squaredAlphaFitting)
             plt.plot(timeD[:self.nbPoints],powerLaw(np.asarray(timeD[:self.nbPoints]),np.exp(popt[0]),popt[1]),'--',
                      label = label)
         
@@ -1687,6 +2217,7 @@ class GUI:
                 textfile.write("Fitting equation,MSD = D*t^alpha\n")
                 textfile.write("D (um^2/s^alpha),%.6f\n" % (self.validParticles[p].diffusionAlphaFitting))
                 textfile.write("Alpha,%.6f\n" % (self.validParticles[p].alphaFitting))
+                textfile.write("\nR^2,%.6f\n" % (self.validParticles[p].r_squaredAlphaFitting))
 
         #Save summary data
         with open(str(directorySave/'MSD_logFitting_Summary.csv'), 'w') as textfile:
@@ -1704,68 +2235,59 @@ class GUI:
                 alphalist.append(self.validParticles[p].alphaFitting)
             textfile.write('\n')
             textfile.write('\n')
-            textfile.write('Average diffusion,%.6f\n' % (np.nanmean(Dlist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(Dlist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(Dlist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(Dlist)))))
+            textfile.write('Average diffusion,%.6f\n' % (np.mean(Dlist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(Dlist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(Dlist,ddof=1)/np.sqrt(len(Dlist))))
             textfile.write('\n')
-            textfile.write('Average alpha,%.6f\n' % (np.nanmean(alphalist)))
-            textfile.write('Standard deviation,%.6f\n' % (np.nanstd(alphalist,ddof=1)))
-            textfile.write('Standard error of the mean,%.6f\n' % (np.nanstd(alphalist,ddof=1)/np.sqrt(np.count_nonzero(~np.isnan(alphalist)))))
+            textfile.write('Average alpha,%.6f\n' % (np.mean(alphalist)))
+            textfile.write('Standard deviation,%.6f\n' % (np.std(alphalist,ddof=1)))
+            textfile.write('Standard error of the mean,%.6f\n' % (np.std(alphalist,ddof=1)/np.sqrt(len(alphalist))))
 
 
-
-    def doAverageAlpha(self):
+    def doAlphaFittingAverage(self):
         #The doAverageMSD function should have been run first
         #so that the averageMSD variable exists
         
-        #Creates the folder alpha if it's the first time
-        if not os.path.exists(str(self.dn / Path('Plots/Exponent'))):
-            os.mkdir(str(self.dn / Path('Plots/Exponent')))
+        #Creates the folder if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/FittingsMSD'))):
+            os.mkdir(str(self.dn / Path('Plots/FittingsMSD')))
         
-        directorySave = self.dn / Path('Plots/Exponent')
-                
-        
-        self.averageAlpha = list()
-        for i in range(len(self.averageMSD)-1):
-            num = np.log(self.averageMSD[i+1])-np.log(self.averageMSD[i])
-            den = np.log(self.averageTimeD[i+1])-np.log(self.averageTimeD[i])
-            self.averageAlpha.append(num/den)
+        directorySave = self.dn / Path('Plots/FittingsMSD')         
 
-        #Plot average alpha, long version
+        #Plot MSD in log-log with fitting info
         fig0 = plt.figure(0,figsize=(12, 10))
+                
+        popt, pcov = curve_fit(linear, np.log(self.averageTimeD[:self.nbPoints]), np.log(self.averageMSD[:self.nbPoints]))  
         
-        plt.plot(self.averageTimeD[:-1],self.averageAlpha)
+        r_squared = calculate_rsquared(np.log(self.averageTimeD[:self.nbPoints]),np.log(self.averageMSD[:self.nbPoints]),popt,linear)
+
+        plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
+        
+        label = "Fitting equation: MSD = $Dt^{\\alpha}$\n$\\alpha$ = %.2f\n$D$ = %.6f\n$R^2$ = %.4f" % (popt[1],np.exp(popt[0]),r_squared)
+        plt.plot(self.averageTimeD[:self.nbPoints],powerLaw(np.asarray(self.averageTimeD[:self.nbPoints]),np.exp(popt[0]),popt[1]),'--',
+                 label = label)
+    
         plt.xlabel('$\Delta$t (s)')
-        plt.ylabel('MSD exponent')
+        plt.ylabel('MSD ($\mu$m$^2$)')
+        plt.yscale('log')
+        plt.xscale('log')
         plt.axis('tight')
-        plt.title('Average MSD exponent (long)')
+        plt.legend()
+        plt.title('MSD exponent for all particles')
         
-        fig0.savefig(str(directorySave/'alpha_average_long.png'))
-        fig0.savefig(str(directorySave/'alpha_average_long.svg'),format='svg',dpi=1200)
+        fig0.savefig(str(directorySave/'MSD_logFitting_average.png'))
+        fig0.savefig(str(directorySave/'MSD_logFitting_average.svg'),format='svg',dpi=1200)
         plt.close()
-        
-        #Plot average alpha, short version
-        fig0 = plt.figure(0,figsize=(12, 10))
-                
-        plt.plot(self.averageTimeD[:self.nbPoints],self.averageAlpha[:self.nbPoints])
-        plt.xlabel('$\Delta$t (s)')
-        plt.ylabel('MSD exponent')
-        plt.axis('tight')
-        plt.title('Average MSD exponent (short)')
-        
-        fig0.savefig(str(directorySave/'alpha_average_short.png'))
-        fig0.savefig(str(directorySave/'alpha_average_short.svg'),format='svg',dpi=1200)
-        plt.close()  
-        
-        with open(str(directorySave/'alpha_average.csv'), 'w') as textfile:
-            textfile.write('TimeD (s),')
-            for t in self.averageTimeD:
-                textfile.write("%.2f," % (t))
-            textfile.write('\n')
-            textfile.write('MSD exponent,')
-            for m in self.averageAlpha:
-                textfile.write(("%.6f," % (m)))     
-                
+
+        #Save data
+        with open(str(directorySave/'MSD_logFitting_average.csv'), 'w') as textfile:
+            textfile.write("Fitting equation,MSD = D*t^alpha\n")
+            textfile.write("D (um^2/s^alpha),%.6f\n" % (popt[1]))
+            textfile.write("Alpha,%.6f\n" % (np.exp(popt[0])))        
+            textfile.write("\nR^2,%.6f\n" % (r_squared))
+
+
+
                 
                 
     def doLocalAlpha(self):
@@ -1876,6 +2398,58 @@ class GUI:
                     for m in alpha:
                         textfile.write(("%.6f," % (m)))
 
+    def doAverageAlpha(self):
+        #The doAverageMSD function should have been run first
+        #so that the averageMSD variable exists
+        
+        #Creates the folder alpha if it's the first time
+        if not os.path.exists(str(self.dn / Path('Plots/Exponent'))):
+            os.mkdir(str(self.dn / Path('Plots/Exponent')))
+        
+        directorySave = self.dn / Path('Plots/Exponent')
+                
+        
+        self.averageAlpha = list()
+        for i in range(len(self.averageMSD)-1):
+            num = np.log(self.averageMSD[i+1])-np.log(self.averageMSD[i])
+            den = np.log(self.averageTimeD[i+1])-np.log(self.averageTimeD[i])
+            self.averageAlpha.append(num/den)
+
+        #Plot average alpha, long version
+        fig0 = plt.figure(0,figsize=(12, 10))
+        
+        plt.plot(self.averageTimeD[:-1],self.averageAlpha)
+        plt.xlabel('$\Delta$t (s)')
+        plt.ylabel('MSD exponent')
+        plt.axis('tight')
+        plt.title('Average MSD exponent (long)')
+        
+        fig0.savefig(str(directorySave/'alpha_average_long.png'))
+        fig0.savefig(str(directorySave/'alpha_average_long.svg'),format='svg',dpi=1200)
+        plt.close()
+        
+        #Plot average alpha, short version
+        fig0 = plt.figure(0,figsize=(12, 10))
+                
+        plt.plot(self.averageTimeD[:self.nbPoints],self.averageAlpha[:self.nbPoints])
+        plt.xlabel('$\Delta$t (s)')
+        plt.ylabel('MSD exponent')
+        plt.axis('tight')
+        plt.title('Average MSD exponent (short)')
+        
+        fig0.savefig(str(directorySave/'alpha_average_short.png'))
+        fig0.savefig(str(directorySave/'alpha_average_short.svg'),format='svg',dpi=1200)
+        plt.close()  
+        
+        with open(str(directorySave/'alpha_average.csv'), 'w') as textfile:
+            textfile.write('TimeD (s),')
+            for t in self.averageTimeD:
+                textfile.write("%.2f," % (t))
+            textfile.write('\n')
+            textfile.write('MSD exponent,')
+            for m in self.averageAlpha:
+                textfile.write(("%.6f," % (m)))     
+                
 
 
     def doInstVel(self):
