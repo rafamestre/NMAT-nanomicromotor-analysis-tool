@@ -14,6 +14,7 @@ Changes from past version:
         the input time.
     -) Third and fourth degree fittings and full equation fitting added.
     -) R^2 added to the fittings.
+    -) Added an option: "use only trackings longer than X s".
 
     
 TO DO:
@@ -21,7 +22,6 @@ TO DO:
     -) Extract error from the fitting of the average MSD and add it to the results
     -) Add summary file of ALL the MSDs, trajectories, MSADs, etc., in the same
         file, inside the "individual" folder.
-    -) Add an option: "use only trackings longer than X s".
     
 
 @author: Rafael Mestre; rmestre@ibecbarcelona.eu; rafmescas1@gmail.com
@@ -486,11 +486,15 @@ class GUI:
         self.fitAlpha = tkinter.IntVar() #Perform logarithmic fitting
         
         self.fittingInterval = tkinter.StringVar(root, value="")
+        self.useOnlyInterval = tkinter.StringVar(root, value="")
+        
         self.nbPoints = -1
         
         self.calculateAverage = tkinter.IntVar() #Make averages over particles
 
         self.doAll = tkinter.IntVar()
+        
+        self.useOnly = tkinter.IntVar()
         
         self.particles = list()
         
@@ -503,25 +507,25 @@ class GUI:
 
         self.dataOrderHorizontal = tkinter.Radiobutton(master, text='Horizontal',
                                                    value='Horizontal',variable=self.dataOrdering,
-                                                   command=self.updateValuesFolder)
+                                                   command=self.updateValuesAndEntries)
         self.dataOrderVertical = tkinter.Radiobutton(master, text='Vertical',
                                                    value='Vertical',variable=self.dataOrdering,
-                                                   command=self.updateValuesFolder)
+                                                   command=self.updateValuesAndEntries)
 
 
         self.dataTypeCsv = tkinter.Radiobutton(master, text='.csv',
                                                    value='csv',variable=self.dataType,
-                                                   command=self.updateValuesFolder)
+                                                   command=self.updateValuesAndEntries)
         self.dataTypeTxt = tkinter.Radiobutton(master, text='.txt',
                                                    value='txt',variable=self.dataType,
-                                                   command=self.updateValuesFolder)
+                                                   command=self.updateValuesAndEntries)
 
         self.delimeterTab = tkinter.Radiobutton(master, text=r'\t',
                                                    value='\t',variable=self.delimeter,
-                                                   command=self.updateValuesFolder)
+                                                   command=self.updateValuesAndEntries)
         self.delimeterComma = tkinter.Radiobutton(master, text=',',
                                                    value=',',variable=self.delimeter,
-                                                   command=self.updateValuesFolder)
+                                                   command=self.updateValuesAndEntries)
 
         # self.dataOrderHorizontal.select()
 
@@ -578,16 +582,29 @@ class GUI:
                                                variable=self.fitAlpha, 
                                                onvalue = True, offvalue = False)
         
-        self.AverageButton = tkinter.Checkbutton(master, text="Do averages between all particles?", 
-                                                    variable=self.calculateAverage, 
-                                                    onvalue = True, offvalue = False)
         
         
         
         self.fitUpTo = tkinter.Label(master, text="Interval of interest:")
-        self.fitIntervalEntry = tkinter.Entry(master,width=10,textvariable = self.fittingInterval)
+        self.fitIntervalEntry = tkinter.Entry(master,width=5,textvariable = self.fittingInterval)
         self.textSeconds = tkinter.StringVar(root, value="s out of ? s")
         self.seconds = tkinter.Label(master, text = self.textSeconds.get(),width=13)
+        self.fittingInterval.trace_add("write", self.intervalsModified)
+        
+        self.useOnlyButton = tkinter.Checkbutton(master, text="Only trajectories longer than ", 
+                                                    variable=self.useOnly, 
+                                                    onvalue = True, offvalue = False, 
+                                                    command = self.useOnlyChecked)
+        self.useOnlyEntry = tkinter.Entry(master,width=5,textvariable = self.useOnlyInterval)
+        self.textS = tkinter.Label(master, text = "s")
+        self.useOnlyEntry.config(state="disabled")
+        self.useOnlyInterval.trace_add("write", self.intervalsModified)
+
+        
+        self.AverageButton = tkinter.Checkbutton(master, text="Do averages between all particles?", 
+                                                    variable=self.calculateAverage, 
+                                                    onvalue = True, offvalue = False)
+
         
         self.analysisButton = tkinter.Button(master,text="Analyze",
                                              command=self.clickAnalysis)
@@ -642,10 +659,14 @@ class GUI:
         self.fitIntervalEntry.grid(row=rowOptions+5,column=1,sticky = 'W',pady = 8, columnspan=2)
         self.seconds.grid(row=rowOptions+5,column=1,sticky = 'W',pady = 8,padx = 50, columnspan=2)
         
-        self.AverageButton.grid(row=rowOptions+6,column=0,sticky = 'W', ipadx = 10,ipady = 12, columnspan=3)
-        self.analysisButton.grid(row=rowOptions+7,column=0, columnspan=3)
+        self.useOnlyButton.grid(row=rowOptions+6,column=0,sticky = 'W',pady = 8, padx = 10, columnspan=2)
+        self.useOnlyEntry.grid(row=rowOptions+6,column=2,sticky = 'W',pady = 8, columnspan=1)
+        self.textS.grid(row=rowOptions+6,column=2,sticky = 'W',pady = 8,padx = 50, columnspan=1)
+        
+        self.AverageButton.grid(row=rowOptions+7,column=0,sticky = 'W', ipadx = 10,ipady = 12, columnspan=3)
+        self.analysisButton.grid(row=rowOptions+8,column=0, columnspan=3)
 
-        self.doAllButton.grid(row=rowOptions+8,column=0,columnspan=3)
+        self.doAllButton.grid(row=rowOptions+9,column=0,columnspan=3)
 
         #Initialize in the current folder
         self.updateValuesFolder()
@@ -656,6 +677,20 @@ class GUI:
         self.dn = Path(filedialog.askdirectory(initialdir=self.dn))
                 
         self.updateValuesFolder()
+        
+        if self.nbParticles > 0:
+            self.fittingInterval.set("%.2f" % (self.longestTime/10))
+            self.useOnlyInterval.set("%.2f" % (self.longestTime/10))
+        else:
+            self.fittingInterval.set("")
+            self.useOnlyInterval.set("")
+
+
+    def updateValuesAndEntries(self):
+        
+        self.updateValuesFolder()
+        
+        self.intervalsModified()
 
     def updateValuesFolder(self):
         
@@ -674,20 +709,24 @@ class GUI:
             self.textSeconds.set("s out of %.2f s" % (self.longestTime))
             self.data = True
             self.analysisButton.config(state="normal")
-            self.fittingInterval.set("%.2f" % (self.longestTime/10))
+            # self.fittingInterval.set("%.2f" % (self.longestTime/10))
+            # self.useOnlyInterval.set("%.2f" % (self.longestTime/10))
             self.doAllButton.config(state="normal")
+            
         else:
             self.firstText.set("No data was found in that folder")
             self.textSeconds.set("s out of ? s")
             self.data = False
             self.analysisButton.config(state="disabled")
             self.doAllButton.config(state="disabled")
-            self.fittingInterval.set("")
+            # self.fittingInterval.set("")
+            # self.useOnlyInterval.set("")
         self.seconds.config(text=self.textSeconds.get())
         self.text1.config(text=self.firstText.get())
         self.folderPath.set(self.dn)
         self.pathEntry.config(text=self.folderPath)  
         self.fitIntervalEntry.config(text=self.fittingInterval)
+        self.useOnlyEntry.config(text=self.useOnlyInterval)
 
     def doEverything(self):
 
@@ -748,9 +787,55 @@ class GUI:
         if self.autocorrelation.get():
             lv_x = self.autoCorrButton.winfo_x()
             lv_y = self.autoCorrButton.winfo_y()
-#            self.autoCorFittingButton.place(x=lv_x+220,y=lv_y)
+            # self.autoCorFittingButton.place(x=lv_x+220,y=lv_y)
         else:
             self.autoCorFittingButton.place_forget()
+
+    def useOnlyChecked(self):
+        if self.useOnly.get():
+            self.useOnlyEntry.config(state="normal")
+            self.updateValuesAndEntries()
+        else:
+            self.useOnlyEntry.config(state="disabled")
+            self.updateValuesAndEntries()
+
+    def intervalsModified(self,var=None, index=None, mode=None):
+         
+        self.updateValuesFolder()
+        
+        if self.nbParticles > 0:
+            disableAnalysis = False
+        else:
+            disableAnalysis = True
+        
+        try: 
+            if self.useOnly.get():
+                float(self.useOnlyInterval.get())
+                self.useOnlyEntry.config(fg="black")
+        except:
+            self.useOnlyEntry.config(fg="red")
+            disableAnalysis = True
+            
+        try:
+            float(self.fittingInterval.get())
+            if self.nbParticles > 0:
+                if float(self.fittingInterval.get()) > self.longestTime:
+                    self.fitIntervalEntry.config(fg="red")
+                    disableAnalysis = True
+                else:
+                    self.fitIntervalEntry.config(fg="black")
+            else:
+                self.fitIntervalEntry.config(fg="black")
+        except:
+            self.fitIntervalEntry.config(fg="red")
+            disableAnalysis = True
+        
+        
+        if disableAnalysis:
+            self.analysisButton.config(state="disabled")
+        # else:
+            # self.analysisButton.config(state="normal")
+
 
     def readFiles(self):
         
@@ -769,60 +854,6 @@ class GUI:
         for p in range(len(self.particles)):
             self.checkParticleValidity(self.particles[p])
             
-
-#     def readData(self,f):
-#         '''Reads the data from the tracking file,
-#         according to v. 1.6.2.
-#         I won't read angles or MSAD, they are calculated in this script.
-#         The MSAD information from the tracking file is wrong.'''
-        
-#         summaryParticle = False
-
-#         with open(str(f),'r') as csvfile:
-#             fileReader = csv.reader(csvfile, delimiter=',')
-#             for row in fileReader:
-#                 if len(row) == 0:
-#                     continue
-#                 if row[0] == 'Summary table':
-#                     summaryParticle = True
-#                     '''The word Particle appears also in the summary table.
-#                     In order to differentiate them and not try to read the data
-#                     this flag if used. '''
-#                 if row[0] == 'Particle':
-#                     if not summaryParticle:
-#                         p = Particle()
-#                         p.particleLabel = row[1]
-#                         p.fileName = f
-#                         self.particles.append(p)
-#                     else:
-#                         summaryParticle = False
-#                 if row[0] == 'Time (seconds)':
-#                     self.particles[-1].time = [float(i) for i in row[1:] if i != '']
-#                 if row[0] == 'X (microm)':
-#                     self.particles[-1].X = [float(i) for i in row[1:] if i != '']       
-#                 if row[0] == 'Y (microm)':
-#                     self.particles[-1].Y = [float(i) for i in row[1:] if i != '']            
-#                 if row[0] == 'Instantaneous velocity (microm/seconds)':
-#                     self.particles[-1].v = [float(i) for i in row[1:] if i != '']
-# #                    p.velocityLongList.append([float(i) for i in row[1:]])
-# #                if row[0] == 'Angle from vel vector (degrees)':
-# #                    self.particles[-1].angle = [float(i) for i in row[1:] if i != '']
-# #                if row[0] == 'Angle from vel vector (degrees) (continuous)':
-# #                    self.particles[-1].angleExtended = [float(i) for i in row[1:] if i != '']
-#                 if row[0] == 'Time displacement (seconds)':
-#                     self.particles[-1].timeD = [float(i) for i in row[1:] if i != '']
-#                     if len(self.particles[-1].timeD) == len(self.particles[-1].time):
-#                         self.particles[-1].timeD = self.particles[-1].timeD[:-1]   #AMENDMENT FOR NON-ALBERT'S DATA
-#                     #TODO: Check this before final launch
-#                     self.particles[-1].FPS = 1/self.particles[-1].timeD[0]
-#                 if row[0] == 'MSD (microm**2)':
-#                     self.particles[-1].MSD = [float(i) for i in row[1:] if i != '']
-# #                if row[0] == "Mean square angular displacement from vel vector (degrees**2)":
-# #                    self.particles[-1].MSAD = [float(i) for i in row[1:] if i != '']
-#                 if row[0] == "Angular auto-correlation from vel vector ":
-#                     self.particles[-1].autoCor = [float(i) for i in row[1:] if i != '']
-#                 if row[0] == "Angular auto-correlation from vel vector standard deviation":
-#                     self.particles[-1].autoCorstd = [float(i) for i in row[1:] if i != '']
 
 
 
@@ -952,13 +983,22 @@ class GUI:
     
             
     def checkParticleValidity(self,p):
-        #A particle is only valid if it has X, Y, timdD and time information
+        #A particle is only valid if it has X, Y, timeD and time information
         #Instantaneous velocity is note necessary
         
         if (not p.X) or (not p.Y) or  (not p.timeD) or (not p.time):
             p.valid = False
         else:
-            p.valid = True
+            if self.useOnly.get():
+                try:
+                    if p.timeD[-1] >= float(self.useOnlyInterval.get()):
+                        p.valid = True
+                    else:
+                        p.valid = False
+                except:
+                    p.valid = False
+            else:
+                p.valid = True
 
     def clickAnalysis(self):
         
@@ -972,6 +1012,12 @@ class GUI:
         
         if self.nbPoints <= 1:
             self.nbPoints = -1
+
+        # if self.useOnly.get():
+        #     self.nbPointsMax = np.abs(np.asarray(self.validParticles[maxParticle].timeD) - float(self.useOnlyInterval.get())).argmin()
+        # else:
+        #     self.nbPointsMax = self.nbPoints
+        
 
         if self.data:
             self.doDataAnalysis()
