@@ -3264,7 +3264,7 @@ class GUI:
 if __name__ == '__main__':
     root = tkinter.Tk()
     gui = GUI(root)
-    root.title("Motion Visualization Tool v0.7")
+    root.title("Nano-Micromotor Analysis Tool  v0.7")
     w = 350
     h = 800
     x = 200
