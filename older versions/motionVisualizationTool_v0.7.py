@@ -3,16 +3,23 @@ NMAT: Nano-micromotor Analysis Tool
 
 v0.7
 
-07/01/2022
+05/01/2022
 
 Changes from past version:
 
-    -) Added manual instalation of: numpy and tkinter. Removed 
-        tidynamics, sys and glob modules.
-    -) Extract error from the fitting of the average MSD and add it to the results
+    -) Functions that compute particle-specific information, like MSD, MSAD, instvel,
+        have been moved inside the Particle class.
+    -) The script now computes the MSD directly from the x,y data. The time
+        displacement (timeD) vector is now computed and not read from file, normalising
+        the input time.
+    -) Third and fourth degree fittings and full equation fitting added.
+    -) R^2 added to the fittings.
+    -) Added an option: "use only trackings longer than X s".
+
     
 TO DO:
     
+    -) Extract error from the fitting of the average MSD and add it to the results
     -) Add summary file of ALL the MSDs, trajectories, MSADs, etc., in the same
         file, inside the "individual" folder.
     
@@ -51,7 +58,8 @@ except:
 from builtins import int #Log integers are just int. "builtins" module needs to be installed
 from builtins import object
 from builtins import range
-
+import sys
+version = sys.version_info[0]
 
 import warnings
 
@@ -64,37 +72,18 @@ warnings.filterwarnings("ignore", message="Degrees of freedom <= 0 for slice")
 warnings.filterwarnings("ignore", message="Mean of empty slice")
 
 
-try:
-    import tkinter
-except:
-    install('tkinter')
-    import tkinter
-
+import tkinter
 from tkinter import ttk
 from tkinter import filedialog
 
-try:
-    import numpy as np
-except:
-    install('numpy')
-    import numpy as np
-
+import numpy as np
 import os
-
-try:
-    from matplotlib import pyplot as plt
-except:
-    install("matplotlib")
-    from matplotlib import pyplot as plt
-
+import glob
+import sys
+from matplotlib import pyplot as plt
 plt.switch_backend('agg') #doesn't show plots
 import csv
-
-try:
-    from scipy.optimize import curve_fit
-except:
-    install("scipy")
-    from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit
 
 try:
     import seaborn as sns
@@ -102,9 +91,11 @@ except:
     install('seaborn')
     import seaborn as sns
     
-sns.set_context("talk", font_scale=1, rc={"lines.linewidth": 3})
-sns.set_style("ticks")
-sns.set_palette(sns.color_palette("hls", 8))
+try:
+    import tidynamics
+except:
+    install('tidynamics')
+    import tidynamics
 
 try:
     from pathlib import Path
@@ -112,7 +103,9 @@ except:
     install('pathlib')
     from pathlib import Path
 
-
+sns.set_context("talk", font_scale=1, rc={"lines.linewidth": 3})
+sns.set_style("ticks")
+sns.set_palette(sns.color_palette("hls", 8))
 
 def linear(x,a,b):
     return a + b*x
@@ -691,23 +684,11 @@ class GUI:
         else:
             self.fittingInterval.set("")
             self.useOnlyInterval.set("")
-            self.useOnlyEntry.config(state="disabled")
-            self.useOnlyButton.deselect()
 
 
     def updateValuesAndEntries(self):
         
         self.updateValuesFolder()
-        
-        if self.nbParticles > 0:
-            self.fittingInterval.set("%.2f" % (self.longestTime/10))
-            self.useOnlyInterval.set("%.2f" % (self.longestTime/10))
-        else:
-            self.fittingInterval.set("")
-            self.useOnlyInterval.set("")
-            self.useOnlyEntry.config(state="disabled")
-            self.useOnlyButton.deselect()
-
         
         self.intervalsModified()
 
@@ -813,12 +794,10 @@ class GUI:
     def useOnlyChecked(self):
         if self.useOnly.get():
             self.useOnlyEntry.config(state="normal")
-            self.updateValuesFolder()
-            self.intervalsModified()
+            self.updateValuesAndEntries()
         else:
             self.useOnlyEntry.config(state="disabled")
-            self.updateValuesFolder()
-            self.intervalsModified()
+            self.updateValuesAndEntries()
 
     def intervalsModified(self,var=None, index=None, mode=None):
          
@@ -1334,13 +1313,12 @@ class GUI:
         fig0 = plt.figure(0,figsize=(12, 10))
                 
         popt, pcov = curve_fit(linearZero, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
-        perr = np.sqrt(np.diag(pcov))
         
         r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints],popt,linearZero)
 
         plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
         
-        label = "Fitting equation: MSD = $4D_{t}t$\n$D_t$ = %.4f $\pm$ %.4f $\mu$m$^2$/s\n$R^2$ = %.4f" % (popt[0]/4, perr[0]/4, r_squared)
+        label = "Fitting equation: MSD = $4D_{t}t$\n$D_t$ = %.4f $\mu$m$^2$/s\n$R^2$ = %.4f" % (popt[0]/4, r_squared)
         plt.plot(self.averageTimeD[:self.nbPoints],linearZero(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
                  label = label)
     
@@ -1358,7 +1336,6 @@ class GUI:
         with open(str(directorySave/'MSD_linearFitting_average.csv'), 'w') as textfile:
             textfile.write("Fitting equation,MSD = 4D*t\n")
             textfile.write("D (um^2/s),%.6f\n" % (popt[0]/4))
-            textfile.write("D error (um^2/s),%.6f\n" % (perr[0]/4))
             textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
@@ -1453,17 +1430,12 @@ class GUI:
         fig0 = plt.figure(0,figsize=(12, 10))
                 
         popt, pcov = curve_fit(linearZero, self.averageTimeD[:self.nbPoints], self.averageMSAD[:self.nbPoints])  
-        perr = np.sqrt(np.diag(pcov))
-        
+                
         r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSAD[:self.nbPoints],popt,linearZero)
 
         plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSAD[:self.nbPoints])
         
-        #Using propagation of errors
-        D_error = perr[0]/4
-        tau_error = np.abs(2*D_error/(popt[0]/4))
-        
-        label = "Fitting equation: MSAD = $4D_{r}t$\n$D_r$ = %.4f $\pm$ %.4f rad$^2$/s\n$\\tau_r$ = %.4f $\pm$ %.4f s\n$R^2$ = %.4f" % (popt[0]/4,D_error,4/popt[0],tau_error,r_squared)
+        label = "Fitting equation: MSAD = $4D_{r}t$\n$D_r$ = %.4f rad$^2$/s\n$\\tau_r$ = %.4f s\n$R^2$ = %.4f" % (popt[0]/4,4/popt[0],r_squared)
         plt.plot(self.averageTimeD[:self.nbPoints],linearZero(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
                  label = label)
     
@@ -1482,8 +1454,6 @@ class GUI:
             textfile.write("Fitting equation,MSAD = 4Dr*t\n")
             textfile.write("Dr (rad^2/s),%.6f\n" % (popt[0]/4))
             textfile.write("tau (s),%.6f\n" % (4/popt[0]))
-            textfile.write("Dr error (rad^2/s),%.6f\n" % (D_error))
-            textfile.write("tau error (s),%.6f\n" % (tau_error))
             textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
@@ -1592,27 +1562,15 @@ class GUI:
         fig0 = plt.figure(0,figsize=(12, 10))
                 
         popt, pcov = curve_fit(quadratic, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
-        perr = np.sqrt(np.diag(pcov))
         
         r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints],popt,quadratic)
 
         plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
         
-        #Using propagation of error
-        D_error = perr[0]/4
-        v_error = np.abs(perr[1]/(2*np.sqrt(popt[1])))
-        v2_error = perr[1]
-        
-        label = "Fitting equation: MSD = $4D_{t}t + v^2t^2$"
-        label += "\n$D_t$ = %.4f $\pm$ %.4f $\mu$m$^2$/s" % (popt[0]/4,D_error)
-        label += "\n$v$ = %.4f $\pm$ %.4f $\mu$m/s" % (np.sqrt(popt[1]), v_error)
-        label += "\n$v^2$ = %.4f $\pm$ %.4f $\mu$m$^2/s^2$" % (popt[1], v2_error)
-        label += "\n$R^2$ = %.4f" % (r_squared)
-        
+        label = "Fitting equation: MSD = $4D_{t}t + v^2t^2$\n$D_t$ = %.4f $\mu$m$^2$/s\n$v$ = %.4f $\mu$m/s\n$v^2$ = %.4f $\mu$m$^2/s^2$\n$R^2$ = %.4f" % (popt[0]/4,np.sqrt(popt[1]),popt[1], r_squared)
         plt.plot(self.averageTimeD[:self.nbPoints],quadratic(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
                  label = label)
     
-
         plt.xlabel('$\Delta$t (s)')
         plt.ylabel('MSD ($\mu$m$^2$)')
         plt.axis('tight')
@@ -1629,9 +1587,6 @@ class GUI:
             textfile.write("D (um^2/s),%.6f\n" % (popt[0]/4))
             textfile.write("v (um/s),%.6f\n" % (np.sqrt(popt[1])))
             textfile.write("v^2 (um^2/s^2),%.6f\n" % (popt[1]))
-            textfile.write("D error (um^2/s),%.6f\n" % (D_error))
-            textfile.write("v error (um/s),%.6f\n" % (v_error))
-            textfile.write("v^2 error (um^2/s^2),%.6f\n" % (v2_error))
             textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
@@ -1749,24 +1704,12 @@ class GUI:
         fig0 = plt.figure(0,figsize=(12, 10))
                 
         popt, pcov = curve_fit(quadratic, self.averageTimeD[:self.nbPoints], self.averageMSAD[:self.nbPoints])  
-        perr = np.sqrt(np.diag(pcov))
-    
+                
         r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSAD[:self.nbPoints],popt,quadratic)
 
         plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSAD[:self.nbPoints])
         
-        #Using propagation of error
-        D_error = perr[0]/4
-        w_error = np.abs(perr[1]/(2*np.sqrt(popt[1])))
-        w2_error = perr[1]
-        tau_error = np.abs(2*D_error/(popt[0]/4))
-        
-        label = "Fitting equation: MSAD = $4D_{r}t + \omega^2t^2$"
-        label += "\n$D_r$ = %.4f $\pm$ %.4f rad$^2$/s" % (popt[0]/4, D_error)
-        label += "\n$\omega$ = %.4f $\pm$ %.4f rad/s" % (np.sqrt(popt[1]), w_error)
-        label += "\n$\\tau_r$ = %.4f $\pm$ %.4f s" % (4/popt[0], tau_error)
-        label += "\n$R^2$ = %.4f" % (r_squared)
-        
+        label = "Fitting equation: MSAD = $4D_{r}t + \omega^2t^2$\n$D_r$ = %.4f rad$^2$/s\n$\omega$ = %.4f rad/s\n$\\tau_r$ = %.4f s\n$R^2$ = %.4f" % (popt[0]/4,np.sqrt(popt[1]),4/popt[0],r_squared)
         plt.plot(self.averageTimeD[:self.nbPoints],quadratic(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
                  label = label)
     
@@ -1787,10 +1730,6 @@ class GUI:
             textfile.write("w^2 (rad^2/s^2),%.6f\n" % (popt[1]))            
             textfile.write("w (rad/s),%.6f\n" % (np.sqrt(popt[1])))
             textfile.write("tau (s),%.6f\n" % (4/popt[0]))
-            textfile.write("Dr error (rad^2/s),%.6f\n" % (D_error))
-            textfile.write("w^2 error (rad^2/s^2),%.6f\n" % (w2_error))            
-            textfile.write("w error (rad/s),%.6f\n" % (w_error))
-            textfile.write("tau error (s),%.6f\n" % (tau_error))
             textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
@@ -1919,23 +1858,16 @@ class GUI:
         fig0 = plt.figure(0,figsize=(12, 10))
                 
         popt, pcov = curve_fit(cubic, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
-        perr = np.sqrt(np.diag(pcov))
         
         r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints],popt,cubic)
 
         plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
         
-        #Using propagation of error
-        D_error = perr[0]/4
-        v_error = np.abs(perr[1]/(2*np.sqrt(popt[1])))
-        v2_error = perr[1]
-        tau_error = np.sqrt((perr[1]/(3*popt[2]))**2 + (popt[1]*perr[2]/(3*popt[2]**2))**2)
-        
         label = "Fitting equation: MSD = $4D_{t}t + v^2t^2 - \\frac{v^2}{3\\tau_{r}}t^3$"
-        label += "\n$D_t$ = %.4f $\pm$ %.4f $\mu$m$^2$/s" % (popt[0]/4, D_error)
-        label += "\n$v$ = %.4f $\pm$ %.4f $\mu$m/s" % (np.sqrt(popt[1]), v_error)
-        label += "\n$v^2$ = %.4f $\pm$ %.4f $\mu$m$^2/s^2$" % (popt[1], v2_error)
-        label += "\n$\\tau_{r}$ = %.4f $\pm$ %.4f $s$" % (-popt[1]/(3*popt[2]), tau_error)
+        label += "\n$D_t$ = %.4f $\mu$m$^2$/s" % (popt[0]/4)
+        label += "\n$v$ = %.4f $\mu$m/s" % (np.sqrt(popt[1]))
+        label += "\n$v^2$ = %.4f $\mu$m$^2/s^2$" % (popt[1])
+        label += "\n$\\tau_{r}$ = %.4f $s$" % (-popt[1]/(3*popt[2]))
         label += "\n$R^2$ = %.4f" % (r_squared)
 
         plt.plot(self.averageTimeD[:self.nbPoints],cubic(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
@@ -1958,10 +1890,6 @@ class GUI:
             textfile.write("v (um/s),%.6f\n" % (np.sqrt(popt[1])))
             textfile.write("v^2 (um^2/s^2),%.6f\n" % (popt[1]))
             textfile.write("tau (s),%.6f\n" % (-popt[1]/(3*popt[2])))
-            textfile.write("D error (um^2/s),%.6f\n" % (D_error))
-            textfile.write("v error (um/s),%.6f\n" % (v_error))
-            textfile.write("v^2 error (um^2/s^2),%.6f\n" % (v2_error))
-            textfile.write("tau error (s),%.6f\n" % (tau_error))
             textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
@@ -2089,23 +2017,16 @@ class GUI:
         fig0 = plt.figure(0,figsize=(12, 10))
                 
         popt, pcov = curve_fit(fourthOrder, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
-        perr = np.sqrt(np.diag(pcov))
         
         r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints],popt,fourthOrder)
 
         plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
         
-        #Using propagation of error
-        D_error = perr[0]/4
-        v_error = np.abs(perr[1]/(2*np.sqrt(popt[1])))
-        v2_error = perr[1]
-        tau_error = np.sqrt((perr[1]/(3*popt[2]))**2 + (popt[1]*perr[2]/(3*popt[2]**2))**2)
-
         label = "Fitting equation: MSD = $4D_{t}t + v^2t^2 - \\frac{v^2}{3\\tau_{r}}t^3 + \\frac{v^2}{12\\tau_{r}^2}t^4$"
-        label += "\n$D_t$ = %.4f $\pm$ %.4f $\mu$m$^2$/s" % (popt[0]/4, D_error)
-        label += "\n$v$ = %.4f $\pm$ %.4f $\mu$m/s" % (np.sqrt(popt[1]), v_error)
-        label += "\n$v^2$ = %.4f $\pm$ %.4f $\mu$m$^2/s^2$" % (popt[1], v2_error)
-        label += "\n$\\tau_{r}$ = %.4f $\pm$ %.4f $s$" % (-popt[1]/(3*popt[2]), tau_error)
+        label += "\n$D_t$ = %.4f $\mu$m$^2$/s" % (popt[0]/4)
+        label += "\n$v$ = %.4f $\mu$m/s" % (np.sqrt(popt[1]))
+        label += "\n$v^2$ = %.4f $\mu$m$^2/s^2$" % (popt[1])
+        label += "\n$\\tau_{r}$ = %.4f $s$" % (-popt[1]/(3*popt[2]))
         label += "\n$R^2$ = %.4f" % (r_squared)
 
         plt.plot(self.averageTimeD[:self.nbPoints],fourthOrder(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
@@ -2128,10 +2049,6 @@ class GUI:
             textfile.write("v (um/s),%.6f\n" % (np.sqrt(popt[1])))
             textfile.write("v^2 (um^2/s^2),%.6f\n" % (popt[1]))
             textfile.write("tau (s),%.6f\n" % (-popt[1]/(3*popt[2])))
-            textfile.write("D error (um^2/s),%.6f\n" % (D_error))
-            textfile.write("v error (um/s),%.6f\n" % (v_error))
-            textfile.write("v^2 error (um^2/s^2),%.6f\n" % (v2_error))
-            textfile.write("tau error (s),%.6f\n" % (tau_error))
             textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
@@ -2161,7 +2078,7 @@ class GUI:
                 popt, pcov = curve_fit(fullEquation, timeD[:self.nbPoints], MSD[:self.nbPoints])  
             except:
                 print('Full equation fitting failed.')
-                popt = [np.nan]*3
+                popt = [np.nan]*4
             
             self.validParticles[part].speedFullEquationFitting = popt[0]
             self.validParticles[part].tauFullEquationFitting = popt[1]
@@ -2250,22 +2167,19 @@ class GUI:
         fig0 = plt.figure(0,figsize=(12, 10))
                 
         try:
-            popt, pcov = curve_fit(fullEquation, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])
-            perr = np.sqrt(np.diag(pcov))
+            popt, pcov = curve_fit(fullEquation, self.averageTimeD[:self.nbPoints], self.averageMSD[:self.nbPoints])  
         except:
             print('Full equation fitting failed.')
-            popt = [np.nan]*3
-            perr = [np.nan]*3
+            popt = [np.nan]*4
         
         r_squared = calculate_rsquared(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints],popt,fullEquation)
 
         plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
         
-        
         label = "Fitting equation: MSD = $4D_{t}t + 2v^2\\tau_{r}^2 (\\frac{t}{\\tau_{r}} + \\exp(-t/\\tau_{r}) - 1)$"
-        label += "\n$D_t$ = %.4f $\pm$ %.4f $\mu$m$^2$/s" % (popt[2], perr[2])
-        label += "\n$v$ = %.4f $\pm$ %.4f $\mu$m/s" % (popt[0], perr[0])
-        label += "\n$\\tau_{r}$ = %.4f $\pm$ %.4f $s$" % (popt[1], perr[1])
+        label += "\n$D_t$ = %.4f $\mu$m$^2$/s" % (popt[2])
+        label += "\n$v$ = %.4f $\mu$m/s" % (popt[0])
+        label += "\n$\\tau_{r}$ = %.4f $s$" % (popt[1])
         label += "\n$R^2$ = %.4f" % (r_squared)
 
         plt.plot(self.averageTimeD[:self.nbPoints],fullEquation(np.asarray(self.averageTimeD[:self.nbPoints]),*popt),'--',
@@ -2287,9 +2201,6 @@ class GUI:
             textfile.write("D (um^2/s),%.6f\n" % (popt[2]))
             textfile.write("v (um/s),%.6f\n" % (popt[0]))
             textfile.write("tau (s),%.6f\n" % (popt[1]))
-            textfile.write("D error (um^2/s),%.6f\n" % (perr[2]))
-            textfile.write("v error (um/s),%.6f\n" % (perr[0]))
-            textfile.write("tau error (s),%.6f\n" % (perr[1]))
             textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
@@ -2393,17 +2304,12 @@ class GUI:
         fig0 = plt.figure(0,figsize=(12, 10))
                 
         popt, pcov = curve_fit(linear, np.log(self.averageTimeD[:self.nbPoints]), np.log(self.averageMSD[:self.nbPoints]))  
-        perr = np.sqrt(np.diag(pcov))
         
         r_squared = calculate_rsquared(np.log(self.averageTimeD[:self.nbPoints]),np.log(self.averageMSD[:self.nbPoints]),popt,linear)
 
         plt.plot(self.averageTimeD[:self.nbPoints],self.averageMSD[:self.nbPoints])
         
-        # Using propagation of errors
-        D_error = np.exp(popt[0])*perr[0]
-        alpha_error = perr[1]
-        
-        label = "Fitting equation: MSD = $Dt^{\\alpha}$\n$\\alpha$ = %.2f $\pm$ %.4f\n$D$ = %.6f $\pm$ %.6f \n$R^2$ = %.4f" % (popt[1],alpha_error,np.exp(popt[0]),D_error,r_squared)
+        label = "Fitting equation: MSD = $Dt^{\\alpha}$\n$\\alpha$ = %.2f\n$D$ = %.6f\n$R^2$ = %.4f" % (popt[1],np.exp(popt[0]),r_squared)
         plt.plot(self.averageTimeD[:self.nbPoints],powerLaw(np.asarray(self.averageTimeD[:self.nbPoints]),np.exp(popt[0]),popt[1]),'--',
                  label = label)
     
@@ -2424,8 +2330,6 @@ class GUI:
             textfile.write("Fitting equation,MSD = D*t^alpha\n")
             textfile.write("D (um^2/s^alpha),%.6f\n" % (popt[1]))
             textfile.write("Alpha,%.6f\n" % (np.exp(popt[0])))        
-            textfile.write("D error (um^2/s^alpha),%.6f\n" % (D_error))
-            textfile.write("Alpha error,%.6f\n" % (alpha_error))        
             textfile.write("\nR^2,%.6f\n" % (r_squared))
 
 
@@ -3264,7 +3168,7 @@ class GUI:
 if __name__ == '__main__':
     root = tkinter.Tk()
     gui = GUI(root)
-    root.title("Motion Visualization Tool v0.7")
+    root.title("Motion Visualization Tool v0.6")
     w = 350
     h = 800
     x = 200

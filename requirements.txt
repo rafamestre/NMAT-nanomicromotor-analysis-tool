@@ -1,0 +1,8 @@
+future
+tkinter
+numpy
+matplotlib
+csv
+scipy
+seaborn
+pathlib
