@@ -10,6 +10,10 @@ If you use this script for your research, please cite it as follows, adapting if
 
 where *X* is your version. Feel free to add the GitHub address as a reference, footnote or between brackets.
 
+Also please cite along with it, the following publication, where we present this tool with all these tips for analysis and the higher order fittings:
+
+> Mestre, R., Palacios, L. S., Miguel-López, A., Arqué, X., Pagonabarraga, I., & Sánchez, S. (2020). Extraction of the propulsive speed of catalytic nano-and micro-motors under different motion dynamics. arXiv preprint [arXiv:2007.15316](https://arxiv.org/abs/2007.15316).
+
 If you want your research to be hightlighted here as a user of this tool, please email me at r.mestre[at]soton[dot]ac[dot]uk. For issues, errors or requests for changes/collaborations, email me. 
 
 ### Tracking of motion
