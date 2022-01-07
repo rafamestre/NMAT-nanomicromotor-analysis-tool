@@ -36,7 +36,7 @@ If you have Python already installed in your computer (not with an Anaconda dist
 If that doesn't work, you can try to run it from the terminal by writing:
 
 ```
-python NMATv1.py
+python NMAT_v1.py
 ```
 
 (Assuming the NMATv1.py file is in the home directory, otherwise write [pathtofile]/NMATv1.py).
@@ -46,7 +46,7 @@ python NMATv1.py
 If the previous doesn't work, it's better to use [Anaconda](https://www.anaconda.com/products/individual) to run this code and install the necessary packages. Once Anaconda is installed, open an Anaconda prompt and type:
 
 ```
-python NMATv1.py
+python NMAT_v1.py
 ```
 
 (Assuming the NMATv1.py file is in the home directory, otherwise write [pathtofile]/NMATv1.py). The first time you run it, some packages not built-in with Python are installed for you to use them. It might take some seconds and some stuff might be written in the prompt, but eventually the GUI will appear. Next time you open it, those packages won't be installed and it'll be much faster.
@@ -70,7 +70,7 @@ conda activate NMAT
 You should be able to then run the script by typing:
 
 ```
-python NMATv1.py
+python NMAT_v1.py
 ```
 
 (Assuming the NMATv1.py file is in the home directory, otherwise write [pathtofile]/NMATv1.py). As before, the first time run it, some packages might be installed and it might take some time.
