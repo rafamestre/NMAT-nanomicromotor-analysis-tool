@@ -6,11 +6,11 @@ Tool to perform the most typical statistical analysis of nano- and micromotors, 
 
 If you use this script for your research, please cite it as follows, adapting if necessary (check lisence file):
 
-> The analysis of motion was performed with the Python-based Nano-micromotor Analysis Tool (NMAT) v. *X* (https://github.com/rafamestre/NMAT-nanomicromotor-analysis-tool). 
+> The analysis of motion was performed with the Python-based Nano-micromotor Analysis Tool (NMAT) v. *X* (https://github.com/rafamestre/NMAT-nanomicromotor-analysis-tool).  [![DOI](https://zenodo.org/badge/303140627.svg)](https://zenodo.org/badge/latestdoi/303140627)
 
-where *X* is your version. Feel free to add the GitHub address as a reference, footnote or between brackets.
+where *X* is your version. Feel free to add the GitHub address and DOI of the repository as a reference, footnote or between brackets.
 
-Also please cite along with it, the following publication, where we present this tool with all these tips for analysis and the higher order fittings:
+You can also cite along with it the following publication, where we present this tool and much of the tips and analyses were discussed, especially higher order fittings:
 
 > Mestre, R., Palacios, L. S., Miguel-López, A., Arqué, X., Pagonabarraga, I., & Sánchez, S. (2020). Extraction of the propulsive speed of catalytic nano-and micro-motors under different motion dynamics. arXiv preprint [arXiv:2007.15316](https://arxiv.org/abs/2007.15316).
 
