@@ -1,21 +1,9 @@
 """
 NMAT: Nano-micromotor Analysis Tool
 
-v0.7
+v1.0
 
-07/01/2022
-
-Changes from past version:
-
-    -) Added manual instalation of: numpy and tkinter. Removed 
-        tidynamics, sys and glob modules.
-    -) Extract error from the fitting of the average MSD and add it to the results
-    
-TO DO:
-    
-    -) Add summary file of ALL the MSDs, trajectories, MSADs, etc., in the same
-        file, inside the "individual" folder.
-    
+14/03/2022    
 
 @author: Rafael Mestre; rmestre@ibecbarcelona.eu; rafmescas1@gmail.com
 @contributions: certain functions come from the tracking software of Albert Miguel, v1.6.2
@@ -3096,6 +3084,10 @@ class GUI:
                 Y = self.validParticles[p].Y
                 for y in Y:
                     textfile.write(("%.6f," % (y)))       
+
+
+    # TODO: Add summary file of ALL the MSDs, trajectories, MSADs, etc., 
+    # in the same file, inside the "individual" folder.
 
     def doAverageMSD(self):
         '''Plots the average MSD with error bars in long and short format'''
