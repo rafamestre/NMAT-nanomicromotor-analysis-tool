@@ -16,11 +16,16 @@ You can also cite along with it the following publication, where we present this
 
 This tool has been used in the following works:
 
-> Arqué, X., Torres, M. D., Patiño, T., Boaro, A., Sánchez, S., & de la Fuente-Nunez, C. (2021). Autonomous treatment of bacterial infections in vivo using antimicrobial micro-and nanomachines. bioRxiv.
+> Arqué, X., Torres, M. D., Patiño, T., Boaro, A., Sánchez, S., & de la Fuente-Nunez, C. (2022). Autonomous Treatment of Bacterial Infections in Vivo Using Antimicrobial Micro-and Nanomotors. ACS nano.
+
 > Valles, M., Pujals, S., Albertazzi, L., & Sánchez, S. (2021). Enzyme Purification Improves the Enzyme Loading, Self-Propulsion, and Endurance Performance of Micromotors. ACS nano.
+
 > Song, S., Mason, A. F., Post, R. A., De Corato, M., Mestre, R., Yewdall, N. A., ... & van Hest, J. (2021). Engineering transient dynamics of artificial cells by stochastic distribution of enzymes. Nature communications, 12(1), 1-9.
+
 > Mestre, R., Cadefau, N., Hortelão, A. C., Grzelak, J., Gich, M., Roig, A., & Sánchez, S. (2021). Nanorods based on mesoporous silica containing iron oxide nanoparticles as catalytic nanomotors: study of motion dynamics. ChemNanoMat, 7(2), 134-140.
+
 > Kaang, B. K., Mestre, R., Kang, D. C., Sánchez, S., & Kim, D. P. (2020). Scalable and integrated flow synthesis of triple-responsive nano-motors via microfluidic Pickering emulsification. Applied Materials Today, 21, 100854.
+
 > Yang, Y., Arqué, X., Patiño, T., Guillerm, V., Blersch, P. R., Pérez-Carvajal, J., ... & Sánchez, S. (2020). Enzyme-Powered Porous Micromotors Built from a Hierarchical Micro-and Mesoporous UiO-Type Metal–Organic Framework. Journal of the American Chemical Society, 142(50), 20962-20967.
 
 If you want your research to be hightlighted here as a user of this tool, please email me at r.mestre[at]soton[dot]ac[dot]uk. For issues, errors or requests for changes/collaborations, email me. 
