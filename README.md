@@ -8,13 +8,17 @@ If you use this script for your research, please cite it as follows, adapting if
 
 > The analysis of motion was performed with the Python-based Nano-micromotor Analysis Tool (NMAT) v. *X* (https://github.com/rafamestre/NMAT-nanomicromotor-analysis-tool).  [![DOI](https://zenodo.org/badge/303140627.svg)](https://zenodo.org/badge/latestdoi/303140627)
 
-where *X* is your version. Feel free to add the GitHub address and DOI of the repository as a reference, footnote or between brackets.
+where *X* is your version. Please, cite as it's described in the Zenodo repository:
+
+> Rafael Mestre. (2022). rafamestre/NMAT-nanomicromotor-analysis-tool: NMAT v1.0.0 (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.5905486
 
 You can also cite along with it the following publication, where we present this tool and much of the tips and analyses were discussed, especially higher order fittings:
 
 > Mestre, R., Palacios, L. S., Miguel-López, A., Arqué, X., Pagonabarraga, I., & Sánchez, S. (2020). Extraction of the propulsive speed of catalytic nano-and micro-motors under different motion dynamics. arXiv preprint [arXiv:2007.15316](https://arxiv.org/abs/2007.15316).
 
 This tool has been used in the following works:
+
+> Patiño Padial, T., Del Grosso, E., Gentile, S., Baranda Pellejero, L., Mestre, R., Paffen, L. J., ... & Ricci, F. (2024). Synthetic DNA-based Swimmers Driven by Enzyme Catalysis. Journal of the American Chemical Society, 146(18), 12664-12671.
 
 > Arqué, X., Torres, M. D., Patiño, T., Boaro, A., Sánchez, S., & de la Fuente-Nunez, C. (2022). Autonomous Treatment of Bacterial Infections in Vivo Using Antimicrobial Micro-and Nanomotors. ACS nano.
 
